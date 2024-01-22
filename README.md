@@ -13,14 +13,20 @@ sequenceDiagram
   H  ->>+ L: lock(a)
   L  ->>+ T: transferFrom(msg.sender, this, a)
   T -->>- L: a SAFE
+  L  ->>  L: emit Locked()
 	deactivate L
 
 	note over H,L: Unlocking
-  H  ->>  L: unlock(b)
-  note over H,L: ... wait for 30 days ...<br><br>Withdrawal
-  H  ->>+ L: withdraw(b)
+  H  ->>+ L: unlock(b)
+  L  ->>  L: emit Unlocked()
+  L -->>- H: id
+
+  note over H,L: Withdrawal
+  H  ->>  H: ... wait for 30 days ...
+  H  ->>+ L: withdraw(id)
   L  ->>+ T: transfer(msg.sender, b)
   T -->>- H: b SAFE
+  L  ->>  L: emit Withdrawn()
 	deactivate L
 ```
 
