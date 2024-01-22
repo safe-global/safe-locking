@@ -65,9 +65,6 @@ const userConfig: HardhatUserConfig = {
     settings: soliditySettings,
   },
   networks: {
-    localhost: {
-      tags: ['dev', 'safe'],
-    },
     hardhat: {
       blockGasLimit: 100000000,
       gas: 100000000,
