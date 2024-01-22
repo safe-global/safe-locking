@@ -1,0 +1,56 @@
+{
+  "name": "@safe-global/safe-locking",
+  "version": "0.1.0",
+  "description": "Safe Locking contract for Safe Tokens",
+  "main": "index.js",
+  "scripts": {
+    "build": "hardhat compile",
+    "build:ts": "npx rimraf dist && tsc",
+    "test": "hardhat test --deploy-fixture",
+    "coverage": "hardhat coverage --network hardhat",
+    "deploy-all": "hardhat deploy-contracts --network",
+    "deploy": "hardhat deploy --network",
+    "lint": "npm run lint:sol && npm run lint:ts",
+    "lint:sol": "solhint 'contracts/**/*.sol'",
+    "lint:ts": "eslint ./src && eslint ./test",
+    "fmt": "prettier --write .",
+    "fmt:check": "prettier --check .",
+    "prepack": "npm run build",
+    "prepare": "cd ../.. && husky install .husky",
+    "prepublish": "npx rimraf build && npm run build && npm run build:ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/safe-global/safe-locking.git"
+  },
+  "keywords": [
+    "Ethereum",
+    "Safe",
+    "Safe Token",
+    "Wallet"
+  ],
+  "author": "@safe-global",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/safe-global/safe-locking/issues"
+  },
+  "homepage": "https://github.com/safe-global/safe-locking#readme",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@types/yargs": "^17.0.32",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "dotenv": "^16.3.2",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-no-only-tests": "^3.1.0",
+    "eslint-plugin-prettier": "^5.1.3",
+    "hardhat": "^2.19.4",
+    "hardhat-deploy": "^0.11.45",
+    "husky": "^8.0.3",
+    "prettier": "^3.2.4",
+    "prettier-plugin-solidity": "^1.3.1",
+    "solc": "^0.8.23-fixed",
+    "solhint": "^4.1.1",
+    "yargs": "^17.7.2"
+  }
+}
