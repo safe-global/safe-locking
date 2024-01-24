@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rule: ["verifySafeTokenLock.sh"]
+        rule: ['verifySafeTokenLock.sh']
 
     steps:
       - uses: actions/checkout@v3
