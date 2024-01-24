@@ -40,9 +40,9 @@ interface ISafeTokenLock {
     function withdrawTo(uint256 id, address beneficiary) external;
 
     /**
-     * @notice Returns the amount of tokens locked by the specified holder.
+     * @notice Returns the amount of tokens associated to the specified holder.
      * @param holder The address of the holder.
-     * @return amount The amount of tokens locked by the holder.
+     * @return amount The amount of (locked + to be unlocked + withdrawable) tokens of the holder.
      */
     function totalBalance(address holder) external returns (uint256 amount);
 
