@@ -6,27 +6,27 @@
 sequenceDiagram
 	actor H as Holder
 	participant T as SAFE Token
-  participant L as Locking Contract
+	participant L as Locking Contract
 
 	note over H,L: Locking
-  H  ->>  T: approve(lockingContract, a)
-  H  ->>+ L: lock(a)
-  L  ->>+ T: transferFrom(msg.sender, this, a)
-  T -->>- L: a SAFE
-  L  ->>  L: emit Locked()
+	H  ->>  T: approve(lockingContract, a)
+	H  ->>+ L: lock(a)
+	L  ->>+ T: transferFrom(msg.sender, this, a)
+	T -->>- L: a SAFE
+	L  ->>  L: emit Locked()
 	deactivate L
 
 	note over H,L: Unlocking
-  H  ->>+ L: unlock(b)
-  L  ->>  L: emit Unlocked()
-  L -->>- H: id
+	H  ->>+ L: unlock(b)
+	L  ->>  L: emit Unlocked()
+	L -->>- H: id
 
-  note over H,L: Withdrawal
-  H  ->>  H: ... wait for 30 days ...
-  H  ->>+ L: withdraw(id)
-  L  ->>+ T: transfer(msg.sender, b)
-  T -->>- H: b SAFE
-  L  ->>  L: emit Withdrawn()
+	note over H,L: Withdrawal
+	H  ->>  H: ... wait for 30 days ...
+	H  ->>+ L: withdraw(id)
+	L  ->>+ T: transfer(msg.sender, b)
+	T -->>- H: b SAFE
+	L  ->>  L: emit Withdrawn()
 	deactivate L
 ```
 
