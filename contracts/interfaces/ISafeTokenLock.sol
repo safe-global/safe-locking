@@ -44,7 +44,7 @@ interface ISafeTokenLock {
      * @param holder The address of the holder.
      * @return amount The amount of tokens locked by the holder.
      */
-    function locked(address holder) external returns (uint256 amount);
+    function totalBalance(address holder) external returns (uint256 amount);
 
     /**
      * @notice Returns the timestamp & amount of tokens of a particular id getting unlocked.
