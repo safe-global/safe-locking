@@ -16,7 +16,7 @@
     "fmt": "prettier --write .",
     "fmt:check": "prettier --check .",
     "prepack": "npm run build",
-    "prepare": "cd ../.. && husky install .husky",
+    "prepare": "husky install",
     "prepublish": "npx rimraf build && npm run build && npm run build:ts"
   },
   "repository": {
