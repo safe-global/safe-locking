@@ -42,6 +42,10 @@ jobs:
 
       - name: Verify rule ${{ matrix.rule }}
         run: |
+          cd certora
+          touch applyHarness.patch
+          make munged
+          cd ..
           echo "key length" ${#CERTORAKEY}
           chmod +x ./certora/scripts/${{ matrix.rule }}
           ./certora/scripts/${{ matrix.rule }}
