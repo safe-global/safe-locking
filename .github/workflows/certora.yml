@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rule: ['']
+        rule: ["verifySafeTokenLock.sh"]
 
     steps:
       - uses: actions/checkout@v3
@@ -40,11 +40,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Uncomment the below lines after rules are created and `CERTORA_KEY` is set.
-      # - name: Verify rule ${{ matrix.rule }}
-      #   run: |
-      #     echo "key length" ${#CERTORAKEY}
-      #     chmod +x ./certora/scripts/${{ matrix.rule }}
-      #     ./certora/scripts/${{ matrix.rule }}
-      #   env:
-      #     CERTORAKEY: ${{ secrets.CERTORA_KEY }}
+      - name: Verify rule ${{ matrix.rule }}
+        run: |
+          echo "key length" ${#CERTORAKEY}
+          chmod +x ./certora/scripts/${{ matrix.rule }}
+          ./certora/scripts/${{ matrix.rule }}
+        env:
+          CERTORAKEY: ${{ secrets.CERTORA_KEY }}
