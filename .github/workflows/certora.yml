@@ -43,7 +43,6 @@ jobs:
       - name: Verify rule ${{ matrix.rule }}
         run: |
           cd certora
-          touch applyHarness.patch
           make munged
           cd ..
           echo "key length" ${#CERTORAKEY}
