@@ -25,19 +25,15 @@ interface ISafeTokenLock {
     function unlock(uint256 amount) external returns (uint256 id);
 
     /**
-     * @notice Withdraws the unlocked tokens of a particular id to the caller.
-     * @param id The id of the unlock operation.
-     * @dev The caller must be the holder of the unlock operation.
+     * @notice Withdraws the unlocked tokens of all unlock operations initiated by the caller.
      */
-    function withdraw(uint256 id) external;
+    function withdraw() external;
 
     /**
-     * @notice Withdraws the unlocked tokens of a particular id to the specified beneficiary.
-     * @param id The id of the unlock operation.
-     * @param beneficiary The address of the beneficiary.
-     * @dev The caller must be the holder of the unlock operation.
+     * @notice Withdraws the unlocked tokens of `maxUnlocks` oldest operations initiated by the caller.
+     * @param maxUnlocks The number of unlock operations to be withdrawn.
      */
-    function withdrawTo(uint256 id, address beneficiary) external;
+    function withdraw(uint256 maxUnlocks) external;
 
     /**
      * @notice Returns the amount of tokens associated to the specified holder.
