@@ -25,7 +25,7 @@ if (PK) {
   }
 }
 
-if (['mainnet', 'goerli', 'mumbai', 'polygon'].includes(argv.network) && INFURA_KEY === undefined) {
+if (['mainnet', 'sepolia'].includes(argv.network) && INFURA_KEY === undefined) {
   throw new Error(`Could not find Infura key in env, unable to connect to network ${argv.network}`)
 }
 
