@@ -15,14 +15,11 @@ contract SafeTokenLock is ISafeTokenLock {
     function unlock(uint256 amount) external returns (uint256 id) {}
 
     // @inheritdoc ISafeTokenLock
-    function withdraw() external {}
+    function withdraw() external returns (uint256 amount) {}
 
     // @inheritdoc ISafeTokenLock
-    function withdraw(uint256 maxUnlocks) external {}
+    function withdraw(uint256 maxUnlocks) external returns (uint256 amount) {}
 
     // @inheritdoc ISafeTokenLock
     function totalBalance(address holder) external returns (uint256 amount) {}
-
-    // @inheritdoc ISafeTokenLock
-    function unlockStatus(uint256 id) external returns (uint256 maturesAtTimestamp, uint256 amount) {}
 }
