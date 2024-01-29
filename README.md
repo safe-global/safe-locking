@@ -1,5 +1,7 @@
 # Safe Locking Contract
 
+## Contract
+
 ### Contract behaviour
 
 ```mermaid
@@ -29,6 +31,10 @@ sequenceDiagram
 	L  ->>  L: emit Withdrawn()
 	deactivate L
 ```
+
+### Contract Implementation Details
+
+Contract implementation details can be found in the [docs folder](./docs/Implementation.md).
 
 <!--
 ### Audits
