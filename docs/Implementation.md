@@ -24,21 +24,21 @@ contract SafeTokenLock is ISafeTokenLock {
     uint64 unlockedAt; // Valid until Year: 2554.
   }
 
-  address public immutable safeToken; // = Safe Token Address.
-  uint32 public immutable cooldownPeriod; // Contains the cooldown period. Default will be 30 days.
+  address public immutable SAFE_TOKEN; // = Safe Token Address.
+  uint32 public immutable COOLDOWN_PERIOD; // Contains the cooldown period. Default will be 30 days.
   mapping(address => User) public users; // Contains the address => user info struct.
   mapping(uint32 => mapping(address => UnlockInfo)) public unlocks; // Contains the Unlock id => user => Unlock Info struct.
 
-  constructor(uint32 _cooldownPeriod) {
-    safeToken = SafeTokenAddress; // Safe Token Contract Address
-    cooldownPeriod = _cooldownPeriod; // Cooldown period. Expected value to be passed is 30 days in seconds.
+  constructor(address _safeTokenAddress, uint32 _cooldownPeriod) {
+    SAFE_TOKEN = _safeTokenAddress; // Safe Token Contract Address
+    COOLDOWN_PERIOD = _cooldownPeriod; // Cooldown period. Expected value to be passed is 30 days in seconds.
   }
 
   // @inheritdoc ISafeTokenLock
   function lock(uint256 amount) external {
     /**
         1. Cautionary check that the `amount` > zero and < 2 ** 96. The latter check could be avoided though due to token supply limitation.
-        2. `tranferFrom` caller (Caller should `approve` in advance).
+        2. `transferFrom` caller (Caller should `approve` in advance).
         3. Update the locked amount of that particular user in `users[caller].locked`.
         4. Emit the Event.
 
@@ -47,7 +47,7 @@ contract SafeTokenLock is ISafeTokenLock {
   }
 
   // @inheritdoc ISafeTokenLock
-  function unlock(uint256 amount) external returns (uint256 id) {
+  function unlock(uint256 amount) external returns (uint32 id) {
     /**
         1. Read the `users[caller]` to `User memory _user`.
         2. Check if the `_user[caller].locked` >= `amount`
@@ -108,7 +108,7 @@ contract SafeTokenLock is ISafeTokenLock {
 }
 ```
 
-## State Change Explanation
+## State Change Example
 
 ### Initial State
 
