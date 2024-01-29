@@ -9,17 +9,17 @@ import {ISafeTokenLock} from "./interfaces/ISafeTokenLock.sol";
  */
 contract SafeTokenLock is ISafeTokenLock {
     // @inheritdoc ISafeTokenLock
-    function lock(uint256 amount) external {}
+    function lock(uint96 amount) external {}
 
     // @inheritdoc ISafeTokenLock
-    function unlock(uint256 amount) external returns (uint256 id) {}
+    function unlock(uint96 amount) external returns (uint32 index) {}
 
     // @inheritdoc ISafeTokenLock
-    function withdraw() external returns (uint256 amount) {}
+    function withdraw() external returns (uint96 amount) {}
 
     // @inheritdoc ISafeTokenLock
-    function withdraw(uint256 maxUnlocks) external returns (uint256 amount) {}
+    function withdraw(uint32 maxUnlocks) external returns (uint96 amount) {}
 
     // @inheritdoc ISafeTokenLock
-    function totalBalance(address holder) external returns (uint256 amount) {}
+    function totalBalance(address holder) external returns (uint96 amount) {}
 }
