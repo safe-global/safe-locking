@@ -49,8 +49,14 @@
     "husky": "^8.0.3",
     "prettier": "^3.2.4",
     "prettier-plugin-solidity": "^1.3.1",
+    "safe-token": "github:@safe-global/safe-token#873141c",
     "solc": "^0.8.23-fixed",
     "solhint": "^4.1.1",
     "yargs": "^17.7.2"
+  },
+  "overrides": {
+    "safe-token": {
+      "ethers": "^6.8.0"
+    }
   }
 }
