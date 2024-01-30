@@ -46,11 +46,13 @@ rule cannotWithdrawBeforeCooldown(method f) {
 // hook to update sum of locked tokens whenever user struct is updated
 hook Sstore users[KEY address key] User value (User old_value) STORAGE {
   havoc ghostLocked assuming ghostLocked@new() == ghostLocked@old() + (value.locked - old_value.locked);
+  userLocks[key] =   userLocks[key] + (value.locked - old_value.locked);
 }
 
 // hook to update sum of unlocked tokens whenever user struct is updated
 hook Sstore users[KEY address key] User value (User old_value) STORAGE {
    havoc ghostUnLocked assuming ghostUnLocked@new() == ghostUnLocked@old() + (value.unlocked - old_value.unlocked);
+   userUnLocks[key] =  userUnLocks[key] + (value.unlocked - old_value.unlocked);
 }
 
 rule contractBalanceGreaterThanSumOfLockedAndUnlocked(method f) {
