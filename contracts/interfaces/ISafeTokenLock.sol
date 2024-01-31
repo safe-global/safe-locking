@@ -7,9 +7,9 @@ pragma solidity 0.8.23;
  * @dev The contract describes the function signature and events used in the Safe Token Lock Contract.
  */
 interface ISafeTokenLock {
-    event Locked(address indexed holder, uint256 amount);
-    event Unlocked(address indexed holder, uint256 indexed id, uint256 amount);
-    event Withdrawn(address indexed holder, uint256 indexed id, address beneficiary, uint256 amount);
+    event Locked(address indexed holder, uint96 amount);
+    event Unlocked(address indexed holder, uint32 indexed index, uint96 amount);
+    event Withdrawn(address indexed holder, uint32 indexed id, uint96 amount);
 
     /**
      * @notice Locks the specified amount of tokens.
@@ -17,38 +17,32 @@ interface ISafeTokenLock {
      * @dev Safe Token Supply = 1 Billion with 18 decimals which is < 2 ** 96
      * Gas Usage (major): Token Transfer + SLOAD & SSTORE users[msg.sender] + Emit Event
      */
-    function lock(uint256 amount) external;
+    function lock(uint96 amount) external;
 
     /**
      * @notice Unlocks the specified amount of tokens.
      * @param amount The amount of tokens to unlock.
-     * @return id The id of the unlock operation.
+     * @return index The id of the unlock operation.
      */
-    function unlock(uint256 amount) external returns (uint256 id);
+    function unlock(uint96 amount) external returns (uint32 index);
 
     /**
      * @notice Withdraws the unlocked tokens of all unlock operations initiated by the caller.
+     * @return amount The amount of tokens withdrawn.
      */
-    function withdraw() external;
+    function withdraw() external returns (uint96 amount);
 
     /**
      * @notice Withdraws the unlocked tokens of `maxUnlocks` oldest operations initiated by the caller.
      * @param maxUnlocks The number of unlock operations to be withdrawn.
+     * @return amount The amount of tokens withdrawn.
      */
-    function withdraw(uint256 maxUnlocks) external;
+    function withdraw(uint32 maxUnlocks) external returns (uint96 amount);
 
     /**
      * @notice Returns the amount of tokens associated to the specified holder.
      * @param holder The address of the holder.
      * @return amount The amount of (locked + to be unlocked + withdrawable) tokens of the holder.
      */
-    function totalBalance(address holder) external returns (uint256 amount);
-
-    /**
-     * @notice Returns the timestamp & amount of tokens of a particular id getting unlocked.
-     * @param id The id of the unlock operation.
-     * @return maturesAtTimestamp The timestamp at which the tokens will mature.
-     * @return amount The amount of tokens locked by the holder.
-     */
-    function unlockStatus(uint256 id) external returns (uint256 maturesAtTimestamp, uint256 amount);
+    function totalBalance(address holder) external returns (uint96 amount);
 }

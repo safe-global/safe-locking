@@ -39,26 +39,23 @@ contract SafeTokenLock is ISafeTokenLock {
     }
 
     // @inheritdoc ISafeTokenLock
-    function lock(uint256 amount) external {
+    function lock(uint96 amount) external {
         if (amount == 0) revert ZeroValue();
         SAFE_TOKEN.transferFrom(msg.sender, address(this), amount);
 
-        users[msg.sender].locked += uint96(amount);
+        users[msg.sender].locked += amount;
         emit Locked(msg.sender, amount);
     }
 
     // @inheritdoc ISafeTokenLock
-    function unlock(uint256 amount) external returns (uint256 id) {}
+    function unlock(uint96 amount) external returns (uint32 index) {}
 
     // @inheritdoc ISafeTokenLock
-    function withdraw() external {}
+    function withdraw() external returns (uint96 amount) {}
 
     // @inheritdoc ISafeTokenLock
-    function withdraw(uint256 maxUnlocks) external {}
+    function withdraw(uint32 maxUnlocks) external returns (uint96 amount) {}
 
     // @inheritdoc ISafeTokenLock
-    function totalBalance(address holder) external returns (uint256 amount) {}
-
-    // @inheritdoc ISafeTokenLock
-    function unlockStatus(uint256 id) external returns (uint256 maturesAtTimestamp, uint256 amount) {}
+    function totalBalance(address holder) external returns (uint96 amount) {}
 }
