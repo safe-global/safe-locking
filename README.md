@@ -70,7 +70,7 @@ sequenceDiagram
 
 	note over H,L: Withdrawal
 	H  ->>  H: ... wait for 30 days ...
-	H  ->>+ L: withdraw(id)
+	H  ->>+ L: withdraw()
 	L  ->>+ T: transfer(msg.sender, b)
 	T -->>- H: b SAFE
 	L  ->>  L: emit Withdrawn()

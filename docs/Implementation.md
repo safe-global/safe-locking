@@ -27,7 +27,7 @@ contract SafeTokenLock is ISafeTokenLock {
   address public immutable SAFE_TOKEN; // = Safe Token Address.
   uint32 public immutable COOLDOWN_PERIOD; // Contains the cooldown period. Default will be 30 days.
   mapping(address => User) public users; // Contains the address => user info struct.
-  mapping(uint32 => mapping(address => UnlockInfo)) public unlocks; // Contains the Unlock id => user => Unlock Info struct.
+  mapping(uint32 => mapping(address => UnlockInfo)) public unlocks; // Contains the Unlock index => user => Unlock Info struct.
 
   constructor(address _safeTokenAddress, uint32 _cooldownPeriod) {
     SAFE_TOKEN = _safeTokenAddress; // Safe Token Contract Address
@@ -35,9 +35,9 @@ contract SafeTokenLock is ISafeTokenLock {
   }
 
   // @inheritdoc ISafeTokenLock
-  function lock(uint256 amount) external {
+  function lock(uint96 amount) external {
     /**
-        1. Cautionary check that the `amount` > zero and < 2 ** 96. The latter check could be avoided though due to token supply limitation.
+        1. Cautionary check that the `amount` > zero
         2. `transferFrom` caller (Caller should `approve` in advance).
         3. Update the locked amount of that particular user in `users[caller].locked`.
         4. Emit the Event.
@@ -47,7 +47,7 @@ contract SafeTokenLock is ISafeTokenLock {
   }
 
   // @inheritdoc ISafeTokenLock
-  function unlock(uint256 amount) external returns (uint32 id) {
+  function unlock(uint96 amount) external returns (uint32 index) {
     /**
         1. Read the `users[caller]` to `User memory _user`.
         2. Check if the `_user[caller].locked` >= `amount`
@@ -60,7 +60,7 @@ contract SafeTokenLock is ISafeTokenLock {
   }
 
   // @inheritdoc ISafeTokenLock
-  function withdraw() external returns (uint256 amount) {
+  function withdraw() external returns (uint96 amount) {
     /**
         1. Read the `users[caller]` to `User memory _user`.
         2. Check if `_user[caller].unlocked` > 0. If yes, continue, else revert.
@@ -79,7 +79,7 @@ contract SafeTokenLock is ISafeTokenLock {
   }
 
   // @inheritdoc ISafeTokenLock
-  function withdraw(uint256 maxUnlocks) external returns (uint256 amount) {
+  function withdraw(uint32 maxUnlocks) external returns (uint96 amount) {
     /**
         1. Read the `users[caller]` to `User memory _user`.
         2. Check if `_user[caller].unlocked` > 0. If yes, continue, else revert.
@@ -98,7 +98,7 @@ contract SafeTokenLock is ISafeTokenLock {
   }
 
   // @inheritdoc ISafeTokenLock
-  function totalBalance(address holder) external returns (uint256 amount) {
+  function totalBalance(address holder) external returns (uint96 amount) {
     /**
         Return the amount from `users[caller].locked` + `users[caller].unlocked`.
 
