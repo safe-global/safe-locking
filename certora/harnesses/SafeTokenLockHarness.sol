@@ -21,7 +21,7 @@ contract SafeTokenLockHarness is SafeTokenLock {
         return users[userAddress];
     }
 
-    function getUserUnlock(address userAddress, uint256 index) external returns(UnlockInfo memory){
+    function getUserUnlock(address userAddress, uint32 index) external returns(UnlockInfo memory) {
         return unlocks[index][userAddress];
     }
 }

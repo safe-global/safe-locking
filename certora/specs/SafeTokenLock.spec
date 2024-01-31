@@ -23,7 +23,7 @@ rule doesNotAffectOtherUserBalance(method f) {
     require (otherUser != user);
     require (e.msg.sender == user);
 
-    uint256 otherUserBalanceBefore = totalBalance(e, otherUser);
+    uint96 otherUserBalanceBefore = totalBalance(e, otherUser);
     f(e,args);
     assert totalBalance(e, otherUser) == otherUserBalanceBefore;
 }
@@ -42,11 +42,14 @@ rule cannotWithdrawMoreThanUnlocked(method f) {
 }
 
 rule cannotWithdrawBeforeCooldown(method f) {
-    uint256 i;
+    uint32 i;
     env e;
     uint256 maturesAtTimestamp;
-    uint256 amount;
-    maturesAtTimestamp, amount = unlockStatus(e, i);
+    uint96 amount;
+
+    SafeTokenLockHarness.UnlockInfo unlockInfo = getUserUnlock(e.msg.sender, i);
+    maturesAtTimestamp = unlockInfo.unlockedAt;
+    amount = unlockInfo.amount;
     require maturesAtTimestamp < e.block.timestamp && amount > 0;
     withdraw@withrevert(e);
     assert lastReverted;
@@ -87,7 +90,7 @@ invariant sumOfUserUnlock(address u)
     getUser(u).unlocked == assert_uint96(userUnlocks[u]);
 
 // atleast 1 good case that user can withdraw all tokens using satisfy
-rule possibleToFullyWithdraw(address sender, uint256 amount) {
+rule possibleToFullyWithdraw(address sender, uint96 amount) {
     
     env eL; // env for lock
     env eU; // env for unlock
@@ -101,7 +104,7 @@ rule possibleToFullyWithdraw(address sender, uint256 amount) {
     require amount > 0;
     lock(eL, amount);
 
-    uint256 unlockAmount;
+    uint96 unlockAmount;
     require unlockAmount <= amount;
 
     unlock(eU, unlockAmount);
@@ -111,21 +114,24 @@ rule possibleToFullyWithdraw(address sender, uint256 amount) {
 }
 
 // if unlock index x < unlock index y, then unlock timestamp of x < unlock timestamp of y
-rule unlockTimestampOnlyIncreases(uint256 x, uint256 y) {
+rule unlockTimestampOnlyIncreases(uint32 x, uint32 y) {
     require x < y;
     env e;
     uint256 xTimestamp;
-    uint256 xAmount;
+    uint96 xAmount;
 
-    xTimestamp, xAmount = unlockStatus(e, x);
-
+    SafeTokenLockHarness.UnlockInfo unlockInfo1 =  getUserUnlock(e.msg.sender, x);
+    xTimestamp = unlockInfo1.unlockedAt;
+    xAmount = unlockInfo1.amount;
     // make use that contract state is such that msg.sender has requested unlock(xAmount)
     require xAmount > 0;
     
     uint256 yTimestamp;
-    uint256 yAmount;
+    uint96 yAmount;
         
-    yTimestamp, yAmount = unlockStatus(e, y);
+    SafeTokenLockHarness.UnlockInfo unlockInfo2 = getUserUnlock(e.msg.sender, y);
+    yTimestamp = unlockInfo2.unlockedAt; 
+    yAmount = unlockInfo2.amount;
 
     // make use that contract state is such that msg.sender has requested unlock(xAmount)
     require yAmount > 0;
@@ -139,12 +145,12 @@ invariant unlockIndexInBetweenStartAndEnd(address u)
 
 rule unlockTimestampNeverZero() {
     env e;
-    uint256 amount;
-    uint256 unlockAmount;
+    uint96 amount;
+    uint96 unlockAmount;
     require unlockAmount > 0 && unlockAmount <= amount && amount > 0;
     
     lock(e,amount);
-    uint256 id;
+    uint32 id;
     id = unlock(e, unlockAmount);
 
     assert getUserUnlock(e.msg.sender, id).amount == unlockAmount;
