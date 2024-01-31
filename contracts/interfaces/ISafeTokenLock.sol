@@ -9,7 +9,7 @@ pragma solidity 0.8.23;
 interface ISafeTokenLock {
     event Locked(address indexed holder, uint96 amount);
     event Unlocked(address indexed holder, uint32 indexed index, uint96 amount);
-    event Withdrawn(address indexed holder, uint32 indexed id, uint96 amount);
+    event Withdrawn(address indexed holder, uint32 indexed index, uint96 amount);
 
     /**
      * @notice Locks the specified amount of tokens.
@@ -20,7 +20,7 @@ interface ISafeTokenLock {
     /**
      * @notice Unlocks the specified amount of tokens.
      * @param amount The amount of tokens to unlock.
-     * @return index The id of the unlock operation.
+     * @return index The index of the unlock operation.
      */
     function unlock(uint96 amount) external returns (uint32 index);
 
