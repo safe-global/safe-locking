@@ -26,6 +26,15 @@
 - The contract cannot allow the total sum of unlock request amounts to exceed the token holder’s `SAFE` balance in the contract.
 - A withdrawal will withdraw the complete amount of its corresponding unlock request. That is, if a user calls `unlock(amount)`, then `withdraw()`, that unlock once matured, should transfer exactly `amount` `$SAFE` tokens to the holder (assuming no other unlocks were matured apart from that particular unlock operation).
 
+#### Possible states for Tokens
+
+- `Locked`: When the tokens are transferred from User using `transferFrom` for an indefinite period.
+- `Unlocked`: Inititated by a user who already have certain amount of tokens locked. This state merely starts the unlock process from the current timestamp to a cooldown timestamp (calculated based on cooldown period).
+- `Withdrawable`: This is the state of unlocked tokens ready to be withdrawn completely by the user. The tokens can remain in the contract indefinitely in this state, until the user withdraws.
+- `Withdrawn`: This state is atomic, and can only be tracked on-chain based on logs emitted during the withdraw operation.
+
+Note: Token enters the contract in `Locked` state (unless tokens are transferred directly without calling the `lock(...)`) and exits the contract from a `Withdrawable` state using the `withdraw(...)` to `Withdrawn` state as mentioned above.
+
 ### Contract State Change Explanation
 
 | User | Operation | Time | Amount | users[User]                             | unlocks[index][User]                                | Note                                         |
