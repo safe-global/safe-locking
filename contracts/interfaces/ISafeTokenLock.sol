@@ -14,6 +14,8 @@ interface ISafeTokenLock {
     /**
      * @notice Locks the specified amount of tokens.
      * @param amount The amount of tokens to lock.
+     * @dev Safe Token Supply = 1 Billion with 18 decimals which is < 2 ** 96
+     * Gas Usage (major): Token Transfer + SLOAD & SSTORE users[msg.sender] + Emit Event
      */
     function lock(uint256 amount) external;
 
