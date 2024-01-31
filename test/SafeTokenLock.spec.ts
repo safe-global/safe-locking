@@ -32,8 +32,8 @@ describe('Lock', function () {
       expect(await safeToken.totalSupply()).to.equal(safeTokenTotalSupply)
 
       // Checking Safe Token Lock Initialization Values
-      expect(await safeTokenLock.safeToken()).to.equal(safeToken)
-      expect(await safeTokenLock.cooldownPeriod()).to.equal(cooldownPeriod) // 30 days
+      expect(await safeTokenLock.SAFE_TOKEN()).to.equal(safeToken)
+      expect(await safeTokenLock.COOLDOWN_PERIOD()).to.equal(cooldownPeriod) // 30 days
     })
 
     it('Should not deploy with zero address', async function () {
