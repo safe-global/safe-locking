@@ -36,7 +36,6 @@ hook Sload uint96 v currentContract.users[KEY address user].unlocked STORAGE {
 //     require ArtGhost[ilk] == v;
 // }
 
-
 // Used to track total sum of locked tokens
 ghost ghostLocked() returns uint256 {
     init_state axiom ghostLocked() == 0;
@@ -62,6 +61,10 @@ rule doesNotAffectOtherUserBalance(method f) {
     assert totalBalance(e, otherUser) == otherUserBalanceBefore;
 }
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 6603fa0 ([#9] Format files, update spec file)
 rule cannotWithdrawMoreThanUnlocked(method f) {
     env e;
     setup(e);
