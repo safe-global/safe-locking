@@ -41,6 +41,17 @@ function setup(env e){
 //     require ArtGhost[ilk] == v;
 // }
 
+ghost mapping(address => mathint) userLocks {
+    init_state axiom forall address X.userLocks[X] == 0;
+}
+
+hook Sload uint96 v currentContract.users[KEY address user].locked STORAGE {
+    require assert_uint96(userLocks[user]) == v;
+}
+
+hook Sload uint96 v currentContract.users[KEY address user].unlocked STORAGE {
+    require assert_uint96(userUnlocks[user]) == v;
+}
 
 // Used to track total sum of locked tokens
 ghost ghostLocked() returns uint256 {
