@@ -157,6 +157,6 @@ rule unlockTimestampNeverZero() {
     assert getUserUnlock(e.msg.sender, id).unlockedAt > 0;
 }
 
-// TODO cannot withdraw more than twice. If everything is withdrawn, then cannot withdraw again
+// TODO If everything is withdrawn, then cannot withdraw again
 // TODO withdraw(x+y) equivalent to withdraw(x) and withdraw(y)
 // TODO withdraw() greater or equal withdraw(x1)
