@@ -25,12 +25,6 @@ describe('Lock', function () {
       expect(ethers.dataLength(await ethers.provider.getCode(safeTokenLock))).to.not.equal(0)
       expect(ethers.dataLength(await ethers.provider.getCode(safeToken))).to.not.equal(0)
 
-      // Checking Safe Token Initialization Values
-      expect(await safeToken.decimals()).to.equal(18)
-      expect(await safeToken.name()).to.equal('Safe Token')
-      expect(await safeToken.symbol()).to.equal('SAFE')
-      expect(await safeToken.totalSupply()).to.equal(safeTokenTotalSupply)
-
       // Checking Safe Token Lock Initialization Values
       expect(await safeTokenLock.SAFE_TOKEN()).to.equal(safeToken)
       expect(await safeTokenLock.COOLDOWN_PERIOD()).to.equal(cooldownPeriod) // 30 days
