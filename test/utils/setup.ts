@@ -1,5 +1,8 @@
 import { deployments, ethers } from 'hardhat'
 
+export const safeTokenTotalSupply = ethers.parseUnits('1', 27) // 1 billion tokens
+export const cooldownPeriod = 60 * 60 * 24 * 30 // 30 days
+
 export const getSafeTokenLock = async () => {
   const SafeTokenLockDeployment = await deployments.get('SafeTokenLock')
   return await ethers.getContractAt('SafeTokenLock', SafeTokenLockDeployment.address)
