@@ -18,15 +18,15 @@ contract SafeTokenLockHarness is SafeTokenLock {
     mapping(uint32 => mapping(address => UnlockInfo)) public unlocks; // Contains the Unlock index => user => Unlock Info struct.
 
     // harnessed getter function
-    function getUser(address userAddress) external returns(User memory){
+    function getUser(address userAddress) external returns (User memory) {
         return users[userAddress];
     }
 
-    function getUserUnlock(address userAddress, uint32 index) external returns(UnlockInfo memory) {
+    function getUserUnlock(address userAddress, uint32 index) external returns (UnlockInfo memory) {
         return unlocks[index][userAddress];
     }
 
-    function getSafeTokenAddress() external view returns(address) {
+    function getSafeTokenAddress() external view returns (address) {
         return SAFE_TOKEN_ADDRESS;
     }
 }

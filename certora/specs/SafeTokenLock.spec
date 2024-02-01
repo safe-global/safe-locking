@@ -1,6 +1,8 @@
 using SafeToken as safeToken;
 
-methods{
+methods {
+
+    // Harnessed functions
     function getUser(address userAddress) external returns(SafeTokenLockHarness.User memory) envfree;
     function getUserUnlock(address userAddress, uint32 index) external returns(SafeTokenLockHarness.UnlockInfo memory) envfree;
     function getSafeTokenAddress() external returns(address) envfree;
@@ -14,10 +16,21 @@ function setup(env e){
     require getSafeTokenAddress() == safeToken;
 }
 
-// hook Sload uint96 v currentContract.users[KEY bytes32 ilk].locked STORAGE {
-//     require ArtGhost[ilk] == v;
-// }
+ghost mapping(address => mathint) userUnlocks {
+    init_state axiom forall address X.userUnlocks[X] == 0;
+}
 
+ghost mapping(address => mathint) userLocks {
+    init_state axiom forall address X.userLocks[X] == 0;
+}
+
+hook Sload uint96 v currentContract.users[KEY address user].locked STORAGE {
+    require assert_uint96(userLocks[user]) == v;
+}
+
+hook Sload uint96 v currentContract.users[KEY address user].unlocked STORAGE {
+    require assert_uint96(userUnlocks[user]) == v;
+}
 
 // Used to track total sum of locked tokens
 ghost ghostLocked() returns uint256 {
@@ -44,13 +57,6 @@ rule doesNotAffectOtherUserBalance(method f) {
     assert totalBalance(e, otherUser) == otherUserBalanceBefore;
 }
 
-ghost mapping(address => mathint) userUnlocks {
-    init_state axiom forall address X.userUnlocks[X] == 0;
-}
-
-ghost mapping(address => mathint) userLocks{
-    init_state axiom forall address X.userLocks[X] == 0;
-}
 
 rule cannotWithdrawMoreThanUnlocked(method f) {
     env e;
