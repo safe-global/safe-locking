@@ -32,6 +32,16 @@ hook Sload uint96 v currentContract.users[KEY address user].unlocked STORAGE {
     require assert_uint96(userUnlocks[user]) == v;
 }
 
+// a cvl function for precondition assumptions 
+function setup(env e){
+    require getSafeTokenAddress() == safeToken;
+}
+
+// hook Sload uint96 v currentContract.users[KEY bytes32 ilk].locked STORAGE {
+//     require ArtGhost[ilk] == v;
+// }
+
+
 // Used to track total sum of locked tokens
 ghost ghostLocked() returns uint256 {
     init_state axiom ghostLocked() == 0;
