@@ -1,21 +1,37 @@
 using SafeToken as safeToken;
 
-// TODO: for every rule and invariant, safeToken address = currentContract.SAFE_TOKEN
-
 methods{
     function getUser(address userAddress) external returns(SafeTokenLockHarness.User memory) envfree;
     function getUserUnlock(address userAddress, uint32 index) external returns(SafeTokenLockHarness.UnlockInfo memory) envfree;
+    function getSafeTokenAddress() external returns(address) envfree;
 
     function SafeToken.balanceOf(address) external returns(uint256) envfree;
+
 }
 
+// a cvl function for precondition assumptions 
+function setup(env e){
+    require getSafeTokenAddress() == safeToken;
+}
+
+// hook Sload uint96 v currentContract.users[KEY bytes32 ilk].locked STORAGE {
+//     require ArtGhost[ilk] == v;
+// }
+
+
 // Used to track total sum of locked tokens
-ghost ghostLocked() returns uint256;
+ghost ghostLocked() returns uint256 {
+    init_state axiom ghostLocked() == 0;
+}
+
 // Used to track total sum of unlocked tokens
-ghost ghostUnLocked() returns uint256;
+ghost ghostUnLocked() returns uint256{
+    init_state axiom ghostUnLocked() == 0;
+}
 
 rule doesNotAffectOtherUserBalance(method f) {
     env e;  
+    setup(e);
     address user;
     address otherUser;
     calldataarg args;
@@ -28,11 +44,17 @@ rule doesNotAffectOtherUserBalance(method f) {
     assert totalBalance(e, otherUser) == otherUserBalanceBefore;
 }
 
-ghost mapping(address => mathint) userUnlocks;
-ghost mapping(address => mathint) userLocks;
+ghost mapping(address => mathint) userUnlocks {
+    init_state axiom forall address X.userUnlocks[X] == 0;
+}
+
+ghost mapping(address => mathint) userLocks{
+    init_state axiom forall address X.userLocks[X] == 0;
+}
 
 rule cannotWithdrawMoreThanUnlocked(method f) {
     env e;
+    setup(e);
     uint256 balanceBefore = safeToken.balanceOf(e, e.msg.sender);
     mathint beforeWithdraw = userUnlocks[e.msg.sender];
     withdraw(e);
@@ -44,6 +66,7 @@ rule cannotWithdrawMoreThanUnlocked(method f) {
 rule cannotWithdrawBeforeCooldown(method f) {
     uint32 i;
     env e;
+    setup(e);
     uint256 maturesAtTimestamp;
     uint96 amount;
 
@@ -67,6 +90,10 @@ hook Sstore SafeTokenLockHarness.users[KEY address key].unlocked uint96 value (u
    userUnlocks[key] =  userUnlocks[key] + value;
 }
 
+// hook Sload uint96 value SafeTokenLockHarness.users[KEY address user].locked STORAGE {
+
+// }
+
 invariant contractBalanceGreaterThanSumOfLockedAndUnlocked() 
     safeToken.balanceOf(currentContract) >= assert_uint256(ghostLocked() + ghostUnLocked());
 
@@ -77,6 +104,7 @@ invariant unlockedTokensAlwaysLessOrEqualLocked(address user)
 // When total locked increases, contract balance increases
 rule contractBalanceIncreasesWhenTotalLockedIncreases(method f) {
     env e;
+    setup(e);
     calldataarg args;
     uint256 totalLockedBefore = ghostLocked();
     uint256 contractBalanceBefore = safeToken.balanceOf(e, currentContract);
@@ -95,7 +123,7 @@ rule possibleToFullyWithdraw(address sender, uint96 amount) {
     env eL; // env for lock
     env eU; // env for unlock
     env eW; // env for withdraw
-
+    setup(eL);
     uint256 balanceBefore = safeToken.balanceOf(sender);
     require eL.msg.sender == sender;
     require eU.msg.sender == sender;
@@ -117,6 +145,7 @@ rule possibleToFullyWithdraw(address sender, uint96 amount) {
 rule unlockTimestampOnlyIncreases(uint32 x, uint32 y) {
     require x < y;
     env e;
+    setup(e);
     uint256 xTimestamp;
     uint96 xAmount;
 
@@ -145,6 +174,7 @@ invariant unlockIndexInBetweenStartAndEnd(address u)
 
 rule unlockTimestampNeverZero() {
     env e;
+    setup(e);
     uint96 amount;
     uint96 unlockAmount;
     require unlockAmount > 0 && unlockAmount <= amount && amount > 0;

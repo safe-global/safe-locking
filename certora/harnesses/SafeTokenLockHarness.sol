@@ -2,6 +2,7 @@
 import {SafeTokenLock} from "../munged/SafeTokenLock.sol";
 
 contract SafeTokenLockHarness is SafeTokenLock {
+    address public SAFE_TOKEN_ADDRESS;
     struct User {
         uint96 locked; // Contains the total locked token by a particular user.
         uint96 unlocked; // Contains the total unlocked token by a particular user.
@@ -23,5 +24,9 @@ contract SafeTokenLockHarness is SafeTokenLock {
 
     function getUserUnlock(address userAddress, uint32 index) external returns(UnlockInfo memory) {
         return unlocks[index][userAddress];
+    }
+
+    function getSafeTokenAddress() external view returns(address) {
+        return SAFE_TOKEN_ADDRESS;
     }
 }
