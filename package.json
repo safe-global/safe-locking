@@ -37,6 +37,7 @@
   "homepage": "https://github.com/safe-global/safe-locking#readme",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@openzeppelin/contracts": "^5.0.1",
     "@types/yargs": "^17.0.32",
     "@typescript-eslint/eslint-plugin": "^6.19.0",
     "dotenv": "^16.3.2",

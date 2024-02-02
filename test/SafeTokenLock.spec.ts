@@ -7,14 +7,14 @@ import { ZeroAddress } from 'ethers'
 describe('Lock', function () {
   const setupTests = deployments.createFixture(async ({ deployments }) => {
     await deployments.fixture()
-    const [deployer, tokenCollector, alice, bob, carol] = await ethers.getSigners()
+    const [deployer, owner, tokenCollector, alice, bob, carol] = await ethers.getSigners()
 
     const safeToken = await getSafeToken()
     await safeToken.unpause() // Tokens are initially paused in SafeToken
     await transferToken(safeToken, deployer, tokenCollector, safeTokenTotalSupply)
 
     const safeTokenLock = await getSafeTokenLock()
-    return { safeToken, safeTokenLock, deployer, tokenCollector, alice, bob, carol }
+    return { safeToken, safeTokenLock, deployer, owner, tokenCollector, alice, bob, carol }
   })
 
   describe('Deployment', function () {
@@ -32,13 +32,19 @@ describe('Lock', function () {
 
     it('Should not deploy with zero address', async function () {
       const SafeTokenLock = await ethers.getContractFactory('SafeTokenLock')
-      await expect(SafeTokenLock.deploy(ZeroAddress, cooldownPeriod)).to.be.revertedWithCustomError(SafeTokenLock, 'ZeroAddress()')
+      const [owner] = await ethers.getSigners()
+      await expect(SafeTokenLock.deploy(owner.address, ZeroAddress, cooldownPeriod)).to.be.revertedWithCustomError(
+        SafeTokenLock,
+        'ZeroAddress()',
+      )
     })
 
     it('Should not deploy with zero cooldown period', async function () {
       const { safeToken } = await setupTests()
+      const [owner] = await ethers.getSigners()
+
       const SafeTokenLock = await ethers.getContractFactory('SafeTokenLock')
-      await expect(SafeTokenLock.deploy(safeToken, 0)).to.be.revertedWithCustomError(SafeTokenLock, 'ZeroValue()')
+      await expect(SafeTokenLock.deploy(owner.address, safeToken, 0)).to.be.revertedWithCustomError(SafeTokenLock, 'ZeroValue()')
     })
   })
 
