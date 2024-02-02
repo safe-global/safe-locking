@@ -61,10 +61,6 @@ rule doesNotAffectOtherUserBalance(method f) {
     assert totalBalance(e, otherUser) == otherUserBalanceBefore;
 }
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 6603fa0 ([#9] Format files, update spec file)
 rule cannotWithdrawMoreThanUnlocked(method f) {
     env e;
     setup(e);
