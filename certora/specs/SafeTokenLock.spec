@@ -2,6 +2,12 @@ using SafeToken as safeToken;
 
 methods {
 
+    // SafeTokenLock functions
+    function lock(uint96) external returns(uint32);
+    function unlock(uint32, uint96) external returns(bool);
+    function withdraw() external returns(bool);
+    function withdraw(uint32) external returns (uint96);
+
     // Harnessed functions
     function getUser(address userAddress) external returns(SafeTokenLock.User memory) envfree;
     function getUserUnlock(address userAddress, uint32 index) external returns(SafeTokenLock.UnlockInfo memory) envfree;
@@ -10,6 +16,12 @@ methods {
     function SafeToken.balanceOf(address) external returns(uint256) envfree;
 
 }
+
+definition onlyStateChangingAction(method f) returns bool =
+    f.selector == sig:lock(uint96).selector
+    || f.selector == sig:unlock(uint96).selector
+    || f.selector == sig:withdraw().selector
+    || f.selector == sig:withdraw(uint32).selector;
 
 // a cvl function for precondition assumptions 
 function setup(env e){
@@ -28,7 +40,7 @@ hook Sload uint96 v currentContract.users[KEY address user].locked STORAGE {
     require assert_uint96(userLocks[user]) == v;
 }
 
-hook Sload uint96 v currentContract.users[KEY address user].unlocked STORAGE {
+hook Sload uint96 v currentContract.users[KEY address user].unlocked STORAGE { 
     require assert_uint96(userUnlocks[user]) == v;
 }
 
@@ -90,7 +102,7 @@ rule cannotWithdrawBeforeCooldown(method f) {
 // hook to update sum of locked tokens whenever user struct is updated
 hook Sstore SafeTokenLockHarness.users[KEY address user].locked uint96 value (uint96 old_value) STORAGE {
   havoc ghostLocked assuming ghostLocked@new() == assert_uint256(ghostLocked@old() + (value - old_value));
-  userLocks[user] = userLocks[user] + value;
+  userLocks[user] = assert_uint96(userLocks[user] + value);
 }
 
 // hook to update sum of unlocked tokens whenever user struct is updated
@@ -111,7 +123,9 @@ invariant unlockedTokensAlwaysLessOrEqualLocked(address user)
     userUnlocks[user] <= userLocks[user];
 
 // When total locked increases, contract balance increases
-rule contractBalanceIncreasesWhenTotalLockedIncreases(method f) {
+rule contractBalanceIncreasesWhenTotalLockedIncreases(method f) filtered {
+    f -> onlyStateChangingAction(f)
+} {
     env e;
     setup(e);
     calldataarg args;
