@@ -3,8 +3,8 @@ using SafeToken as safeToken;
 methods {
 
     // Harnessed functions
-    function getUser(address userAddress) external returns(SafeTokenLockHarness.User memory) envfree;
-    function getUserUnlock(address userAddress, uint32 index) external returns(SafeTokenLockHarness.UnlockInfo memory) envfree;
+    function getUser(address userAddress) external returns(SafeTokenLock.User memory) envfree;
+    function getUserUnlock(address userAddress, uint32 index) external returns(SafeTokenLock.UnlockInfo memory) envfree;
     function getSafeTokenAddress() external returns(address) envfree;
 
     function SafeToken.balanceOf(address) external returns(uint256) envfree;
@@ -32,26 +32,10 @@ hook Sload uint96 v currentContract.users[KEY address user].unlocked STORAGE {
     require assert_uint96(userUnlocks[user]) == v;
 }
 
-// a cvl function for precondition assumptions 
-function setup(env e){
-    require getSafeTokenAddress() == safeToken;
-}
-
 // hook Sload uint96 v currentContract.users[KEY bytes32 ilk].locked STORAGE {
 //     require ArtGhost[ilk] == v;
 // }
 
-ghost mapping(address => mathint) userLocks {
-    init_state axiom forall address X.userLocks[X] == 0;
-}
-
-hook Sload uint96 v currentContract.users[KEY address user].locked STORAGE {
-    require assert_uint96(userLocks[user]) == v;
-}
-
-hook Sload uint96 v currentContract.users[KEY address user].unlocked STORAGE {
-    require assert_uint96(userUnlocks[user]) == v;
-}
 
 // Used to track total sum of locked tokens
 ghost ghostLocked() returns uint256 {
@@ -59,7 +43,7 @@ ghost ghostLocked() returns uint256 {
 }
 
 // Used to track total sum of unlocked tokens
-ghost ghostUnLocked() returns uint256{
+ghost ghostUnLocked() returns uint256 {
     init_state axiom ghostUnLocked() == 0;
 }
 
@@ -97,7 +81,7 @@ rule cannotWithdrawBeforeCooldown(method f) {
     uint256 maturesAtTimestamp;
     uint96 amount;
 
-    SafeTokenLockHarness.UnlockInfo unlockInfo = getUserUnlock(e.msg.sender, i);
+    SafeTokenLock.UnlockInfo unlockInfo = getUserUnlock(e.msg.sender, i);
     maturesAtTimestamp = unlockInfo.unlockedAt;
     amount = unlockInfo.amount;
     require maturesAtTimestamp < e.block.timestamp && amount > 0;
@@ -176,7 +160,7 @@ rule unlockTimestampOnlyIncreases(uint32 x, uint32 y) {
     uint256 xTimestamp;
     uint96 xAmount;
 
-    SafeTokenLockHarness.UnlockInfo unlockInfo1 =  getUserUnlock(e.msg.sender, x);
+    SafeTokenLock.UnlockInfo unlockInfo1 =  getUserUnlock(e.msg.sender, x);
     xTimestamp = unlockInfo1.unlockedAt;
     xAmount = unlockInfo1.amount;
     // make use that contract state is such that msg.sender has requested unlock(xAmount)
@@ -185,7 +169,7 @@ rule unlockTimestampOnlyIncreases(uint32 x, uint32 y) {
     uint256 yTimestamp;
     uint96 yAmount;
         
-    SafeTokenLockHarness.UnlockInfo unlockInfo2 = getUserUnlock(e.msg.sender, y);
+    SafeTokenLock.UnlockInfo unlockInfo2 = getUserUnlock(e.msg.sender, y);
     yTimestamp = unlockInfo2.unlockedAt; 
     yAmount = unlockInfo2.amount;
 
