@@ -37,6 +37,7 @@ contract SafeTokenLock is ISafeTokenLock, IRecoverERC20, Ownable2Step {
     error ZeroValue();
     error CannotRecoverSafeToken();
     error UnlockAmountExceeded();
+    error CannotRecoverSafeToken();
 
     constructor(address initialOwner, address _safeTokenAddress, uint32 _cooldownPeriod) Ownable(initialOwner) {
         if (_safeTokenAddress == address(0)) revert ZeroAddress();
