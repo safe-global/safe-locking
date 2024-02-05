@@ -15,6 +15,7 @@ interface ISafeTokenLock {
      * @notice Locks the specified amount of tokens.
      * @param amount The amount of tokens to lock.
      * @dev Safe Token Supply = 1 Billion with 18 decimals which is < 2 ** 96
+     * Does not allow locking zero tokens.
      * Gas Usage (major): Token Transfer + SLOAD & SSTORE users[msg.sender] + Emit Event
      */
     function lock(uint96 amount) external;
@@ -23,6 +24,8 @@ interface ISafeTokenLock {
      * @notice Unlocks the specified amount of tokens.
      * @param amount The amount of tokens to unlock.
      * @return index The index of the unlock operation.
+     * @dev Does not allow unlocking zero tokens.
+     * Gas Usage (major): SLOAD & SSTORE users[msg.sender] + SLOAD COOLDOWN_PERIOD + SSTORE UnlockInfo + Emit Event
      */
     function unlock(uint96 amount) external returns (uint32 index);
 

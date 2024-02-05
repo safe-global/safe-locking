@@ -25,7 +25,7 @@ contract SafeTokenLock is ISafeTokenLock {
   }
 
   address public immutable SAFE_TOKEN; // = Safe Token Address.
-  uint32 public immutable COOLDOWN_PERIOD; // Contains the cooldown period. Default will be 30 days.
+  uint64 public immutable COOLDOWN_PERIOD; // Contains the cooldown period. Default will be 30 days.
   mapping(address => User) public users; // Contains the address => user info struct.
   mapping(uint32 => mapping(address => UnlockInfo)) public unlocks; // Contains the Unlock index => user => Unlock Info struct.
 
@@ -55,7 +55,7 @@ contract SafeTokenLock is ISafeTokenLock {
         4. Update the `users[caller]` with (_user[caller].locked - amount, _user[caller].unlocked + amount, _user[caller].unlockStart, _user[caller].unlockEnd++).
         5. Emit the Event.
 
-        Gas Usage (major usage only): SLOAD & STORE users[caller] + SSTORE UnlockInfo + Emit Event
+        Gas Usage (major usage only): SLOAD & STORE users[caller] + SLOAD COOLDOWN_PERIOD + SSTORE UnlockInfo + Emit Event
     */
   }
 
