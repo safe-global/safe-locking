@@ -36,6 +36,8 @@ contract SafeTokenLock is ISafeTokenLock, IRecoverERC20, Ownable2Step {
     error ZeroAddress();
     error ZeroValue();
     error CannotRecoverSafeToken();
+    error UnlockAmountExceeded();
+
     constructor(address initialOwner, address _safeTokenAddress, uint32 _cooldownPeriod) Ownable(initialOwner) {
         if (_safeTokenAddress == address(0)) revert ZeroAddress();
         if (_cooldownPeriod == 0) revert ZeroValue();
@@ -54,7 +56,18 @@ contract SafeTokenLock is ISafeTokenLock, IRecoverERC20, Ownable2Step {
     }
 
     // @inheritdoc ISafeTokenLock
-    function unlock(uint96 amount) external returns (uint32 index) {}
+    function unlock(uint96 amount) external returns (uint32 index) {
+        if (amount == 0) revert ZeroValue();
+
+        User memory _user = users[msg.sender];
+        if (_user.locked < amount) revert UnlockAmountExceeded();
+
+        unlocks[_user.unlockEnd][msg.sender] = UnlockInfo(amount, uint64(block.timestamp) + COOLDOWN_PERIOD);
+        users[msg.sender] = User(_user.locked - amount, _user.unlocked + amount, _user.unlockStart, _user.unlockEnd + 1);
+        index = _user.unlockEnd;
+
+        emit Unlocked(msg.sender, index, amount);
+    }
 
     // @inheritdoc ISafeTokenLock
     function withdraw() external returns (uint96 amount) {}

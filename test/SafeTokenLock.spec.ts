@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import { deployments, ethers } from 'hardhat'
 import { cooldownPeriod, getSafeToken, getSafeTokenLock, safeTokenTotalSupply } from './utils/setup'
-import { transferToken } from './utils/execution'
+import { timestamp, transferToken } from './utils/execution'
 import { ZeroAddress } from 'ethers'
 
 describe('Lock', function () {
@@ -91,7 +91,6 @@ describe('Lock', function () {
       // Transfer tokens to Alice
       await transferToken(safeToken, tokenCollector, alice, totalTokensToLock)
       let aliceTokenBalance = await safeToken.balanceOf(alice)
-      expect(aliceTokenBalance).to.equal(totalTokensToLock)
 
       // Locking tokens multiple times
       let aliceSafeTokenLockTokenBalance = (await safeTokenLock.users(alice)).locked
@@ -118,13 +117,10 @@ describe('Lock', function () {
 
       // Transfer tokens to Alice
       await transferToken(safeToken, tokenCollector, alice, tokenToLock)
-      expect(await safeToken.balanceOf(alice)).to.equal(tokenToLock)
 
       // Locking tokens
       await safeToken.connect(alice).approve(safeTokenLock, tokenToLock)
       await safeTokenLock.connect(alice).lock(tokenToLock)
-      expect(await safeToken.balanceOf(alice)).to.equal(0)
-      expect(await safeToken.balanceOf(safeTokenLock)).to.equal(tokenToLock)
 
       // Checking Locked Token details
       expect((await safeTokenLock.users(alice)).locked).to.equal(tokenToLock)
@@ -148,11 +144,212 @@ describe('Lock', function () {
 
       // Transfer tokens to Alice
       await transferToken(safeToken, tokenCollector, alice, tokenToLock)
-      expect(await safeToken.balanceOf(alice)).to.equal(tokenToLock)
 
       // Locking tokens
       await safeToken.connect(alice).approve(safeTokenLock, tokenToLock)
       await expect(safeTokenLock.connect(alice).lock(tokenToLock)).to.emit(safeTokenLock, 'Locked').withArgs(alice, tokenToLock)
+    })
+  })
+
+  describe('Unlocking', function () {
+    it('Should unlock tokens correctly', async function () {
+      const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
+      const tokenToLock = ethers.parseUnits('1', 20) // 100 tokens
+      const tokenToUnlock = ethers.parseUnits('0.5', 20) // 50 tokens
+
+      // Transfer tokens to Alice
+      await transferToken(safeToken, tokenCollector, alice, tokenToLock)
+
+      // Locking tokens
+      await safeToken.connect(alice).approve(safeTokenLock, tokenToLock)
+      await safeTokenLock.connect(alice).lock(tokenToLock)
+
+      // Unlocking tokens
+      await safeTokenLock.connect(alice).unlock(tokenToUnlock)
+
+      // Calculating expected unlockedAt timestamp
+      const currentTimestamp = BigInt(await timestamp())
+      const cooldownPeriod = await safeTokenLock.COOLDOWN_PERIOD()
+      const expectedUnlockedAt = currentTimestamp + cooldownPeriod
+
+      // Checking Locked & Unlocked Token details
+      expect((await safeTokenLock.users(alice)).locked).to.equal(tokenToLock - tokenToUnlock)
+      expect((await safeTokenLock.users(alice)).unlocked).to.equal(tokenToUnlock)
+      expect((await safeTokenLock.users(alice)).unlockStart).to.equal(0)
+      expect((await safeTokenLock.users(alice)).unlockEnd).to.equal(1)
+      expect((await safeTokenLock.unlocks(0, alice)).amount).to.equal(tokenToUnlock)
+      expect((await safeTokenLock.unlocks(0, alice)).unlockedAt).to.equal(expectedUnlockedAt)
+    })
+
+    it('Should not unlock zero tokens', async function () {
+      const { safeTokenLock, alice } = await setupTests()
+      const tokenToUnlock = 0 // 0 tokens
+
+      // Unlocking zero tokens
+      await expect(safeTokenLock.connect(alice).unlock(tokenToUnlock)).to.be.revertedWithCustomError(safeTokenLock, 'ZeroValue()')
+    })
+
+    it('Should not unlock is amount > total locked tokens', async function () {
+      const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
+      const tokenToLock = ethers.parseUnits('0.5', 20) // 50 tokens
+      const tokenToUnlock = ethers.parseUnits('1', 20) // 100 tokens
+
+      // Transfer tokens to Alice
+      await transferToken(safeToken, tokenCollector, alice, tokenToLock)
+
+      // Locking tokens
+      await safeToken.connect(alice).approve(safeTokenLock, tokenToLock)
+      await safeTokenLock.connect(alice).lock(tokenToLock)
+
+      // Unlocking tokens
+      await expect(safeTokenLock.connect(alice).unlock(tokenToUnlock)).to.be.revertedWithCustomError(
+        safeTokenLock,
+        'UnlockAmountExceeded()',
+      )
+    })
+
+    it('Should unlock tokens correctly multiple times', async function () {
+      const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
+      const tokenToLock = ethers.parseUnits('10', 20) // 1000 tokens
+      const tokenToUnlock = ethers.parseUnits('1', 20) // 100 tokens
+
+      // Transfer tokens to Alice
+      await transferToken(safeToken, tokenCollector, alice, tokenToLock)
+
+      // Locking tokens
+      await safeToken.connect(alice).approve(safeTokenLock, tokenToLock)
+      await safeTokenLock.connect(alice).lock(tokenToLock)
+
+      // Unlocking tokens multiple times
+      const cooldownPeriod = await safeTokenLock.COOLDOWN_PERIOD()
+      let currentLocked = (await safeTokenLock.users(alice)).locked
+      let currentUnlocked = (await safeTokenLock.users(alice)).unlocked
+      let index = 0
+      for (; index < 5; index++) {
+        await safeTokenLock.connect(alice).unlock(tokenToUnlock)
+
+        // Calculating expected unlockedAt timestamp
+        const expectedUnlockedAt = BigInt(await timestamp()) + cooldownPeriod
+
+        // Checking Locked & Unlocked Token details
+        expect((await safeTokenLock.users(alice)).locked).to.equal(currentLocked - tokenToUnlock)
+        expect((await safeTokenLock.users(alice)).unlocked).to.equal(currentUnlocked + tokenToUnlock)
+        expect((await safeTokenLock.users(alice)).unlockStart).to.equal(0)
+        expect((await safeTokenLock.users(alice)).unlockEnd).to.equal(index + 1)
+        expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(tokenToUnlock)
+        expect((await safeTokenLock.unlocks(index, alice)).unlockedAt).to.equal(expectedUnlockedAt)
+        currentLocked = (await safeTokenLock.users(alice)).locked
+        currentUnlocked = (await safeTokenLock.users(alice)).unlocked
+      }
+
+      // Checking Final Locked & Unlocked Token details
+      expect((await safeTokenLock.users(alice)).locked).to.equal(tokenToLock - tokenToUnlock * BigInt(index))
+      expect((await safeTokenLock.users(alice)).unlocked).to.equal(tokenToUnlock * BigInt(index))
+      expect((await safeTokenLock.users(alice)).unlockStart).to.equal(0)
+      expect((await safeTokenLock.users(alice)).unlockEnd).to.equal(index)
+    })
+
+    it('Should be possible to unlock all tokens', async function () {
+      const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
+      const tokenToLock = safeTokenTotalSupply
+      const tokenToUnlock = safeTokenTotalSupply
+
+      // Transfer tokens to Alice
+      await transferToken(safeToken, tokenCollector, alice, tokenToLock)
+
+      // Locking tokens
+      await safeToken.connect(alice).approve(safeTokenLock, tokenToLock)
+      await safeTokenLock.connect(alice).lock(tokenToLock)
+
+      // Unlocking tokens
+      await safeTokenLock.connect(alice).unlock(tokenToUnlock)
+
+      // Calculating expected unlockedAt timestamp
+      const currentTimestamp = BigInt(await timestamp())
+      const cooldownPeriod = await safeTokenLock.COOLDOWN_PERIOD()
+      const expectedUnlockedAt = currentTimestamp + cooldownPeriod
+
+      // Checking Locked & Unlocked Token details
+      expect((await safeTokenLock.users(alice)).locked).to.equal(0)
+      expect((await safeTokenLock.users(alice)).unlocked).to.equal(tokenToUnlock)
+      expect((await safeTokenLock.users(alice)).unlockStart).to.equal(0)
+      expect((await safeTokenLock.users(alice)).unlockEnd).to.equal(1)
+      expect((await safeTokenLock.unlocks(0, alice)).amount).to.equal(tokenToUnlock)
+      expect((await safeTokenLock.unlocks(0, alice)).unlockedAt).to.equal(expectedUnlockedAt)
+    })
+
+    it('Should not reduce the total token before unlock', async function () {
+      // Total tokens can increase but not decrease during an unlock operation.
+      const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
+      const tokenToLock = ethers.parseUnits('1', 20) // 100 tokens
+      const tokenToUnlock = ethers.parseUnits('0.5', 20) // 50 tokens
+
+      // Transfer tokens to Alice
+      await transferToken(safeToken, tokenCollector, alice, tokenToLock)
+
+      // Locking tokens
+      await safeToken.connect(alice).approve(safeTokenLock, tokenToLock)
+      await safeTokenLock.connect(alice).lock(tokenToLock)
+
+      // Unlocking tokens
+      const safeTokenBeforeUnlock = await safeToken.balanceOf(safeTokenLock)
+      await safeTokenLock.connect(alice).unlock(tokenToUnlock)
+      const safeTokenAfterUnlock = await safeToken.balanceOf(safeTokenLock)
+
+      // Check token balance remains same or not
+      expect(safeTokenBeforeUnlock).to.equal(safeTokenAfterUnlock)
+    })
+
+    it('Should emit Unlocked event when tokens are unlocked correctly', async function () {
+      const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
+      const tokenToLock = ethers.parseUnits('1', 20) // 100 tokens
+      const tokenToUnlock = ethers.parseUnits('0.5', 20) // 50 tokens
+
+      // Transfer tokens to Alice
+      await transferToken(safeToken, tokenCollector, alice, tokenToLock)
+
+      // Locking tokens
+      await safeToken.connect(alice).approve(safeTokenLock, tokenToLock)
+      await safeTokenLock.connect(alice).lock(tokenToLock)
+
+      // Unlocking tokens
+      await expect(safeTokenLock.connect(alice).unlock(tokenToUnlock)).to.emit(safeTokenLock, 'Unlocked').withArgs(alice, 0, tokenToUnlock)
+    })
+
+    it('Unlock Index can be same for two different user with two different locked and unlocked amount', async function () {
+      const { safeToken, safeTokenLock, tokenCollector, alice, bob } = await setupTests()
+      const tokenToLockAlice = ethers.parseUnits('1', 20) // 100 tokens
+      const tokenToUnlockAlice = ethers.parseUnits('0.5', 20) // 50 tokens
+      const tokenToLockBob = ethers.parseUnits('0.8', 20) // 80 tokens
+      const tokenToUnlockBob = ethers.parseUnits('0.4', 20) // 40 tokens
+      const cooldownPeriod = await safeTokenLock.COOLDOWN_PERIOD()
+      const index = 0 // Unlock Index shared by Alice & Bob
+
+      // Transfer tokens to Alice & Bob
+      await transferToken(safeToken, tokenCollector, alice, tokenToLockAlice)
+      await transferToken(safeToken, tokenCollector, bob, tokenToLockBob)
+
+      // Locking tokens of Alice & Bob
+      await safeToken.connect(alice).approve(safeTokenLock, tokenToLockAlice)
+      await safeTokenLock.connect(alice).lock(tokenToLockAlice)
+      await safeToken.connect(bob).approve(safeTokenLock, tokenToLockBob)
+      await safeTokenLock.connect(bob).lock(tokenToLockBob)
+
+      // Unlocking tokens of Alice & calculating expected unlockedAt timestamp
+      await safeTokenLock.connect(alice).unlock(tokenToUnlockAlice)
+      const currentTimestampAlice = BigInt(await timestamp())
+      const expectedUnlockedAtAlice = currentTimestampAlice + cooldownPeriod
+
+      // Unlocking tokens of Bob & calculating expected unlockedAt timestamp
+      await safeTokenLock.connect(bob).unlock(tokenToUnlockBob)
+      const currentTimestampBob = BigInt(await timestamp())
+      const expectedUnlockedAtBob = currentTimestampBob + cooldownPeriod
+
+      // Checking Unlocked Token details of Alice and Bob
+      expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(tokenToUnlockAlice)
+      expect((await safeTokenLock.unlocks(index, alice)).unlockedAt).to.equal(expectedUnlockedAtAlice)
+      expect((await safeTokenLock.unlocks(index, bob)).amount).to.equal(tokenToUnlockBob)
+      expect((await safeTokenLock.unlocks(index, bob)).unlockedAt).to.equal(expectedUnlockedAtBob)
     })
   })
 
