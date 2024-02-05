@@ -22,13 +22,14 @@ contract SafeTokenLock is ISafeTokenLock {
 
     /* solhint-disable var-name-mixedcase */
     SafeToken public immutable SAFE_TOKEN; // Safe Token Address.
-    uint32 public immutable COOLDOWN_PERIOD; // Contains the cooldown period. Default will be 30 days.
+    uint64 public immutable COOLDOWN_PERIOD; // Contains the cooldown period. Default will be 30 days.
     /* solhint-enable var-name-mixedcase */
     mapping(address => User) public users; // Contains the address => user info struct.
     mapping(uint32 => mapping(address => UnlockInfo)) public unlocks; // Contains the Unlock id => user => Unlock Info struct.
 
     error ZeroAddress();
     error ZeroValue();
+    error UnlockAmountExceeded();
 
     constructor(address _safeTokenAddress, uint32 _cooldownPeriod) {
         if (_safeTokenAddress == address(0)) revert ZeroAddress();
@@ -48,7 +49,18 @@ contract SafeTokenLock is ISafeTokenLock {
     }
 
     // @inheritdoc ISafeTokenLock
-    function unlock(uint96 amount) external returns (uint32 index) {}
+    function unlock(uint96 amount) external returns (uint32 index) {
+        if (amount == 0) revert ZeroValue();
+
+        User memory _user = users[msg.sender];
+        if (_user.locked < amount) revert UnlockAmountExceeded();
+
+        unlocks[_user.unlockEnd][msg.sender] = UnlockInfo(amount, uint64(block.timestamp) + COOLDOWN_PERIOD);
+        users[msg.sender] = User(_user.locked - amount, _user.unlocked + amount, _user.unlockStart, _user.unlockEnd + 1);
+        index = _user.unlockEnd;
+
+        emit Unlocked(msg.sender, index, amount);
+    }
 
     // @inheritdoc ISafeTokenLock
     function withdraw() external returns (uint96 amount) {}
