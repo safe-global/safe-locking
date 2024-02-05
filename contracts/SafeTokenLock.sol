@@ -29,13 +29,14 @@ contract SafeTokenLock is ISafeTokenLock, IRecoverERC20, Ownable2Step {
     /* solhint-disable var-name-mixedcase */
     IERC20 public immutable SAFE_TOKEN; // Safe Token Address.
     uint32 public immutable COOLDOWN_PERIOD; // Contains the cooldown period. Default will be 30 days.
+    uint64 public immutable COOLDOWN_PERIOD; // Contains the cooldown period. Default will be 30 days.
+
     /* solhint-enable var-name-mixedcase */
     mapping(address => User) public users; // Contains the address => user info struct.
     mapping(uint32 => mapping(address => UnlockInfo)) public unlocks; // Contains the Unlock id => user => Unlock Info struct.
 
     error ZeroAddress();
     error ZeroValue();
-    error CannotRecoverSafeToken();
     error UnlockAmountExceeded();
     error CannotRecoverSafeToken();
 
