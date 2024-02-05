@@ -5,7 +5,6 @@ import {ISafeTokenLock} from "./interfaces/ISafeTokenLock.sol";
 import {IRecoverERC20} from "./interfaces/IRecoverERC20.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
@@ -13,8 +12,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @author @safe-global/safe-protocol
  */
 contract SafeTokenLock is ISafeTokenLock, IRecoverERC20, Ownable2Step {
-    using SafeERC20 for IERC20;
-
     struct User {
         uint96 locked; // Contains the total locked token by a particular user.
         uint96 unlocked; // Contains the total unlocked token by a particular user.
@@ -84,6 +81,6 @@ contract SafeTokenLock is ISafeTokenLock, IRecoverERC20, Ownable2Step {
         if (token == SAFE_TOKEN) {
             revert CannotRecoverSafeToken();
         }
-        token.safeTransfer(msg.sender, amount);
+        token.transfer(msg.sender, amount);
     }
 }
