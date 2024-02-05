@@ -155,4 +155,32 @@ describe('Lock', function () {
       await expect(safeTokenLock.connect(alice).lock(tokenToLock)).to.emit(safeTokenLock, 'Locked').withArgs(alice, tokenToLock)
     })
   })
+
+  describe('Recover ERC20', function () {
+    it('Should not allow non-owner to recover', async () => {
+      const { safeTokenLock, alice } = await setupTests()
+      expect(safeTokenLock.connect(alice).recoverERC20(ZeroAddress, 0))
+        .to.be.revertedWithCustomError(safeTokenLock, 'OwnableUnauthorizedAccount')
+        .withArgs(alice)
+    })
+
+    it('Should not allow Safe token recovery', async () => {
+      const { safeTokenLock, owner, safeToken } = await setupTests()
+      expect(safeTokenLock.connect(owner).recoverERC20(safeToken, 0)).to.be.revertedWithCustomError(safeTokenLock, 'CannotRecoverSafeToken')
+    })
+
+    it('Should allow ERC20 recovery other than Safe token', async () => {
+      const { safeTokenLock, owner } = await setupTests()
+      const erc20 = await (await ethers.getContractFactory('TestERC20')).deploy('TEST', 'TEST')
+      const balanceBefore = await erc20.balanceOf(owner)
+      const amount = 1n
+
+      await erc20.mint(safeTokenLock, amount)
+
+      await safeTokenLock.connect(owner).recoverERC20(erc20, amount)
+
+      const balanceAfter = await erc20.balanceOf(owner)
+      expect(balanceAfter).equals(balanceBefore + amount)
+    })
+  })
 })
