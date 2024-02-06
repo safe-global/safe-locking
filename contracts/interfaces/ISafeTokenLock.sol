@@ -32,6 +32,9 @@ interface ISafeTokenLock {
     /**
      * @notice Withdraws the unlocked tokens of all unlock operations initiated by the caller.
      * @return amount The amount of tokens withdrawn.
+     * @dev Calling this function without any unlock operation or maturing unlock operation will not revert.
+     * Gas Usage (major usage only): SLOAD users[caller] + n SLOAD unlocks[i][caller] + (optional - only if gas refunds) n Zero assignment SSTORE unlocks[i][caller] + SSTORE users[caller] + SLOAD SAFE_TOKEN + Token Transfer + Event Emit
+        where n can be as high as `unlockEnd - unlockStart`
      */
     function withdraw() external returns (uint96 amount);
 

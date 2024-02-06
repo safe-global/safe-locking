@@ -63,7 +63,25 @@ contract SafeTokenLock is ISafeTokenLock {
     }
 
     // @inheritdoc ISafeTokenLock
-    function withdraw() external returns (uint96 amount) {}
+    function withdraw() external returns (uint96 amount) {
+        User memory _user = users[msg.sender];
+        uint32 _unlockEnd = _user.unlockEnd;
+        uint32 i = _user.unlockStart;
+
+        for (; i < _unlockEnd; i++) {
+            UnlockInfo memory _unlockInfo = unlocks[i][msg.sender];
+            if (_unlockInfo.unlockedAt > block.timestamp) break;
+
+            amount += _unlockInfo.amount;
+            emit Withdrawn(msg.sender, i, _unlockInfo.amount);
+            delete unlocks[i][msg.sender];
+        }
+
+        if (amount > 0) {
+            users[msg.sender] = User(_user.locked, _user.unlocked - amount, i, _unlockEnd);
+            SAFE_TOKEN.transfer(msg.sender, uint256(amount));
+        }
+    }
 
     // @inheritdoc ISafeTokenLock
     function withdraw(uint32 maxUnlocks) external returns (uint96 amount) {}
