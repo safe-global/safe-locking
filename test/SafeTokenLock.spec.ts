@@ -7,14 +7,14 @@ import { ZeroAddress } from 'ethers'
 describe('Lock', function () {
   const setupTests = deployments.createFixture(async ({ deployments }) => {
     await deployments.fixture()
-    const [deployer, tokenCollector, alice, bob, carol] = await ethers.getSigners()
+    const [deployer, owner, tokenCollector, alice, bob, carol] = await ethers.getSigners()
 
     const safeToken = await getSafeToken()
     await safeToken.unpause() // Tokens are initially paused in SafeToken
     await transferToken(safeToken, deployer, tokenCollector, safeTokenTotalSupply)
 
     const safeTokenLock = await getSafeTokenLock()
-    return { safeToken, safeTokenLock, deployer, tokenCollector, alice, bob, carol }
+    return { safeToken, safeTokenLock, deployer, owner, tokenCollector, alice, bob, carol }
   })
 
   describe('Deployment', function () {
@@ -32,13 +32,18 @@ describe('Lock', function () {
 
     it('Should not deploy with zero address', async function () {
       const SafeTokenLock = await ethers.getContractFactory('SafeTokenLock')
-      await expect(SafeTokenLock.deploy(ZeroAddress, cooldownPeriod)).to.be.revertedWithCustomError(SafeTokenLock, 'ZeroAddress()')
+      const { owner } = await setupTests()
+      await expect(SafeTokenLock.deploy(owner.address, ZeroAddress, cooldownPeriod)).to.be.revertedWithCustomError(
+        SafeTokenLock,
+        'ZeroAddress()',
+      )
     })
 
     it('Should not deploy with zero cooldown period', async function () {
-      const { safeToken } = await setupTests()
+      const { safeToken, owner } = await setupTests()
+
       const SafeTokenLock = await ethers.getContractFactory('SafeTokenLock')
-      await expect(SafeTokenLock.deploy(safeToken, 0)).to.be.revertedWithCustomError(SafeTokenLock, 'ZeroValue()')
+      await expect(SafeTokenLock.deploy(owner.address, safeToken, 0)).to.be.revertedWithCustomError(SafeTokenLock, 'ZeroValue()')
     })
   })
 
@@ -344,6 +349,43 @@ describe('Lock', function () {
       expect((await safeTokenLock.unlocks(index, alice)).unlockedAt).to.equal(expectedUnlockedAtAlice)
       expect((await safeTokenLock.unlocks(index, bob)).amount).to.equal(tokenToUnlockBob)
       expect((await safeTokenLock.unlocks(index, bob)).unlockedAt).to.equal(expectedUnlockedAtBob)
+    })
+  })
+
+  describe('Recover ERC20', function () {
+    it('Should not allow non-owner to recover', async () => {
+      const { safeTokenLock, alice } = await setupTests()
+      expect(safeTokenLock.connect(alice).recoverERC20(ZeroAddress, 0))
+        .to.be.revertedWithCustomError(safeTokenLock, 'OwnableUnauthorizedAccount')
+        .withArgs(alice)
+    })
+
+    it('Should not allow Safe token recovery', async () => {
+      const { safeTokenLock, owner, safeToken } = await setupTests()
+      expect(safeTokenLock.connect(owner).recoverERC20(safeToken, 0)).to.be.revertedWithCustomError(safeTokenLock, 'CannotRecoverSafeToken')
+    })
+
+    it('Should allow ERC20 recovery other than Safe token', async () => {
+      const { safeTokenLock, safeToken, owner } = await setupTests()
+      const erc20 = await (await ethers.getContractFactory('TestERC20')).deploy('TEST', 'TEST')
+
+      const amount = 1n
+      await erc20.mint(safeTokenLock, amount)
+
+      const ownerBalanceBefore = await erc20.balanceOf(owner)
+      const contractBalanceBefore = await erc20.balanceOf(safeTokenLock)
+      const contractSafeTokenBalanceBefore = await safeToken.balanceOf(safeTokenLock)
+
+      await safeTokenLock.connect(owner).recoverERC20(erc20, amount)
+
+      const ownerBalanceAfter = await erc20.balanceOf(owner)
+      expect(ownerBalanceAfter).equals(ownerBalanceBefore + amount)
+
+      const contractBalanceAfter = await erc20.balanceOf(safeTokenLock)
+      expect(contractBalanceAfter).equals(contractBalanceBefore - amount)
+
+      const contractSafeTokenBalanceAfter = await safeToken.balanceOf(safeTokenLock)
+      expect(contractSafeTokenBalanceAfter).equals(contractSafeTokenBalanceBefore)
     })
   })
 })
