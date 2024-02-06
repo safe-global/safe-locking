@@ -32,7 +32,7 @@ describe('Lock', function () {
 
     it('Should not deploy with zero address', async function () {
       const SafeTokenLock = await ethers.getContractFactory('SafeTokenLock')
-      const [owner] = await ethers.getSigners()
+      const { owner } = await setupTests()
       await expect(SafeTokenLock.deploy(owner.address, ZeroAddress, cooldownPeriod)).to.be.revertedWithCustomError(
         SafeTokenLock,
         'ZeroAddress()',

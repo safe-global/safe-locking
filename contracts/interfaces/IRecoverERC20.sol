@@ -9,8 +9,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @dev This interface defines function and event for recovering ERC20 tokens from a contract.
  */
 interface IRecoverERC20 {
-    event RecoveredERC20(IERC20 token, uint256 amount);
-
     /**
      * @notice Function to recover ERC20 tokens from a contract.
      * @dev Developers should apply additional checks such as only owner can call this function as per application.
