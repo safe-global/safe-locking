@@ -78,9 +78,7 @@ contract SafeTokenLock is ISafeTokenLock, IRecoverERC20, Ownable2Step {
 
     // @inheritdoc IRecoverERC20
     function recoverERC20(IERC20 token, uint256 amount) external override onlyOwner {
-        if (token == SAFE_TOKEN) {
-            revert CannotRecoverSafeToken();
-        }
+        if (token == SAFE_TOKEN) revert CannotRecoverSafeToken();
         token.transfer(msg.sender, amount);
     }
 }
