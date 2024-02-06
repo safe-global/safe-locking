@@ -2,7 +2,11 @@
 import {SafeTokenLock} from "../munged/SafeTokenLock.sol";
 
 contract SafeTokenLockHarness is SafeTokenLock {
-    constructor(address _safeTokenAddress, uint32 _cooldownPeriod) SafeTokenLock(_safeTokenAddress, _cooldownPeriod) {}
+    constructor(
+        address initial_owner,
+        address _safeTokenAddress,
+        uint32 _cooldownPeriod
+    ) SafeTokenLock(initial_owner, _safeTokenAddress, _cooldownPeriod) {}
 
     // harnessed getter function
     function getUser(address userAddress) external returns (User memory) {

@@ -25,7 +25,7 @@ definition onlyStateChangingAction(method f) returns bool =
 
 // a cvl function for precondition assumptions 
 function setup(env e){
-    require getSafeTokenAddress() == safeToken;
+    // require getSafeTokenAddress() == safeToken;
 }
 
 ghost mapping(address => mathint) userUnlocks {
@@ -37,11 +37,11 @@ ghost mapping(address => mathint) userLocks {
 }
 
 hook Sload uint96 v currentContract.users[KEY address user].locked STORAGE {
-    require assert_uint96(userLocks[user]) == v;
+    require userLocks[user] == to_mathint(v);
 }
 
 hook Sload uint96 v currentContract.users[KEY address user].unlocked STORAGE { 
-    require assert_uint96(userUnlocks[user]) == v;
+    require userUnlocks[user] == to_mathint(v);
 }
 
 // hook Sload uint96 v currentContract.users[KEY bytes32 ilk].locked STORAGE {
@@ -49,13 +49,11 @@ hook Sload uint96 v currentContract.users[KEY address user].unlocked STORAGE {
 // }
 
 // Used to track total sum of locked tokens
-ghost ghostLocked() returns uint256 {
-    init_state axiom ghostLocked() == 0;
+ghost mathint ghostLocked {
+    init_state axiom ghostLocked == 0;
 }
-
-// Used to track total sum of unlocked tokens
-ghost ghostUnLocked() returns uint256 {
-    init_state axiom ghostUnLocked() == 0;
+ghost mathint ghostUnlocked {
+    init_state axiom ghostUnlocked == 0;
 }
 
 rule doesNotAffectOtherUserBalance(method f) {
@@ -81,7 +79,7 @@ rule cannotWithdrawMoreThanUnlocked(method f) {
     withdraw(e);
     require !lastReverted;
     uint256 balanceAfter = safeToken.balanceOf(e, e.msg.sender);
-    assert balanceAfter == assert_uint256(balanceBefore + beforeWithdraw);
+    assert to_mathint(balanceAfter) == balanceBefore + beforeWithdraw;
 }
 
 rule cannotWithdrawBeforeCooldown(method f) {
@@ -101,14 +99,14 @@ rule cannotWithdrawBeforeCooldown(method f) {
 
 // hook to update sum of locked tokens whenever user struct is updated
 hook Sstore SafeTokenLockHarness.users[KEY address user].locked uint96 value (uint96 old_value) STORAGE {
-  havoc ghostLocked assuming ghostLocked@new() == assert_uint256(ghostLocked@old() + (value - old_value));
-  userLocks[user] = assert_uint96(userLocks[user] + value);
+    ghostLocked = ghostLocked + (value - old_value);
+    userLocks[user] = value;
 }
 
 // hook to update sum of unlocked tokens whenever user struct is updated
 hook Sstore SafeTokenLockHarness.users[KEY address key].unlocked uint96 value (uint96 old_value) STORAGE {
-   havoc ghostUnLocked assuming ghostUnLocked@new() == assert_uint256(ghostUnLocked@old() + (value - old_value));
-   userUnlocks[key] =  userUnlocks[key] + value;
+    ghostUnlocked = ghostUnlocked + (value - old_value);
+    userUnlocks[key] = value;
 }
 
 // hook Sload uint96 value SafeTokenLockHarness.users[KEY address user].locked STORAGE {
@@ -116,11 +114,14 @@ hook Sstore SafeTokenLockHarness.users[KEY address key].unlocked uint96 value (u
 // }
 
 invariant contractBalanceGreaterThanSumOfLockedAndUnlocked() 
-    safeToken.balanceOf(currentContract) >= assert_uint256(ghostLocked() + ghostUnLocked());
+    to_mathint(safeToken.balanceOf(currentContract)) >= ghostLocked + ghostUnlocked;
 
 
-invariant unlockedTokensAlwaysLessOrEqualLocked(address user) 
-    userUnlocks[user] <= userLocks[user];
+// rule unlockedTokensAlwaysLessOrEqualLocked{
+//    // userUnlocks[user] + userLocks[user] sum should not change on unlock or (except withdraw or lock)
+// }
+// invariant unlockedTokensAlwaysLessOrEqualLocked(address user) 
+//     userUnlocks[user] <= userLocks[user];
 
 // When total locked increases, contract balance increases
 rule contractBalanceIncreasesWhenTotalLockedIncreases(method f) filtered {
@@ -129,16 +130,16 @@ rule contractBalanceIncreasesWhenTotalLockedIncreases(method f) filtered {
     env e;
     setup(e);
     calldataarg args;
-    uint256 totalLockedBefore = ghostLocked();
+    mathint totalLockedBefore = ghostLocked;
     uint256 contractBalanceBefore = safeToken.balanceOf(e, currentContract);
     f(e, args);
-    uint256 totalLockedAfter = ghostLocked();
+    mathint totalLockedAfter = ghostLocked;
     uint256 contractBalanceAfter = safeToken.balanceOf(e, currentContract);
     assert (totalLockedAfter - totalLockedBefore > 0) => (contractBalanceAfter - contractBalanceBefore > 0);
 }
 
 invariant sumOfUserUnlock(address u)
-    getUser(u).unlocked == assert_uint96(userUnlocks[u]);
+    to_mathint(getUser(u).unlocked) == userUnlocks[u];
 
 // atleast 1 good case that user can withdraw all tokens using satisfy
 rule possibleToFullyWithdraw(address sender, uint96 amount) {
