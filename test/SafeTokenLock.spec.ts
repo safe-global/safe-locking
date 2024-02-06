@@ -40,8 +40,7 @@ describe('Lock', function () {
     })
 
     it('Should not deploy with zero cooldown period', async function () {
-      const { safeToken } = await setupTests()
-      const [owner] = await ethers.getSigners()
+      const { safeToken, owner } = await setupTests()
 
       const SafeTokenLock = await ethers.getContractFactory('SafeTokenLock')
       await expect(SafeTokenLock.deploy(owner.address, safeToken, 0)).to.be.revertedWithCustomError(SafeTokenLock, 'ZeroValue()')
