@@ -366,7 +366,7 @@ describe('Lock', function () {
     })
 
     it('Should allow ERC20 recovery other than Safe token', async () => {
-      const { safeTokenLock, owner } = await setupTests()
+      const { safeTokenLock, safeToken, owner } = await setupTests()
       const erc20 = await (await ethers.getContractFactory('TestERC20')).deploy('TEST', 'TEST')
 
       const amount = 1n
@@ -374,6 +374,7 @@ describe('Lock', function () {
 
       const ownerBalanceBefore = await erc20.balanceOf(owner)
       const contractBalanceBefore = await erc20.balanceOf(safeTokenLock)
+      const contractSafeTokenBalanceBefore = await safeToken.balanceOf(safeTokenLock)
 
       await safeTokenLock.connect(owner).recoverERC20(erc20, amount)
 
@@ -382,6 +383,9 @@ describe('Lock', function () {
 
       const contractBalanceAfter = await erc20.balanceOf(safeTokenLock)
       expect(contractBalanceAfter).equals(contractBalanceBefore - amount)
+
+      const contractSafeTokenBalanceAfter = await safeToken.balanceOf(safeTokenLock)
+      expect(contractSafeTokenBalanceAfter).equals(contractSafeTokenBalanceBefore)
     })
   })
 })
