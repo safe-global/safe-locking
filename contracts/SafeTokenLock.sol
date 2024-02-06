@@ -2,7 +2,6 @@
 pragma solidity 0.8.23;
 
 import {ISafeTokenLock} from "./interfaces/ISafeTokenLock.sol";
-import {IRecoverERC20} from "./interfaces/IRecoverERC20.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -11,7 +10,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @title SafeTokenLock - A Locking Contract for the Safe Tokens.
  * @author @safe-global/safe-protocol
  */
-contract SafeTokenLock is ISafeTokenLock, IRecoverERC20, Ownable2Step {
+contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
     struct User {
         uint96 locked; // Contains the total locked token by a particular user.
         uint96 unlocked; // Contains the total unlocked token by a particular user.
@@ -77,7 +76,7 @@ contract SafeTokenLock is ISafeTokenLock, IRecoverERC20, Ownable2Step {
     function totalBalance(address holder) external returns (uint96 amount) {}
 
     // @inheritdoc IRecoverERC20
-    function recoverERC20(IERC20 token, uint256 amount) external override onlyOwner {
+    function recoverERC20(IERC20 token, uint256 amount) external onlyOwner {
         if (token == SAFE_TOKEN) revert CannotRecoverSafeToken();
         token.transfer(msg.sender, amount);
     }
