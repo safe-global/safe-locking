@@ -27,7 +27,20 @@ jobs:
       - run: npm ci
       - run: npm run build && npm run build:ts
       - run: npm run test
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 20.x
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm run build && npm run build:ts
       - run: npm run coverage
+      - run: npm run coverage:check
       # Uncomment when the repo is ready to be published
       # - name: Coveralls
       #   uses: coverallsapp/github-action@master
