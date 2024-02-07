@@ -36,6 +36,7 @@
   },
   "homepage": "https://github.com/safe-global/safe-locking#readme",
   "devDependencies": {
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.10",
     "@nomicfoundation/hardhat-toolbox": "^4.0.0",
     "@openzeppelin/contracts": "^5.0.1",
     "@types/yargs": "^17.0.32",
