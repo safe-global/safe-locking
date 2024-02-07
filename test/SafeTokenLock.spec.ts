@@ -597,6 +597,356 @@ describe('Lock', function () {
           .withArgs(alice, 4, tokenToUnlock)
       })
     })
+
+    describe('Withdraw(uint32)', function () {
+      it('Should withdraw tokens correctly', async function () {
+        const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
+        const tokenToLock = ethers.parseUnits('1', 20) // 100 tokens
+        const tokenToUnlock = ethers.parseUnits('0.5', 20) // 50 tokens
+
+        // Transfer tokens to Alice
+        await transferToken(safeToken, tokenCollector, alice, tokenToLock)
+
+        // Locking tokens
+        await safeToken.connect(alice).approve(safeTokenLock, tokenToLock)
+        await safeTokenLock.connect(alice).lock(tokenToLock)
+
+        // Unlocking tokens
+        await safeTokenLock.connect(alice).unlock(tokenToUnlock)
+
+        // Getting unlocked at timestamp and increasing timestamp
+        const unlockedAt = (await safeTokenLock.unlocks(0, alice)).unlockedAt
+        await time.increaseTo(unlockedAt)
+
+        // Withdrawing tokens
+        const aliceTokenBalanceBefore = await safeToken.balanceOf(alice)
+        const aliceUnlockContractBalanceBefore = (await safeTokenLock.users(alice)).unlocked
+        const aliceUnlockStartBefore = (await safeTokenLock.users(alice)).unlockStart
+        const aliceUnlockEndBefore = (await safeTokenLock.users(alice)).unlockEnd
+        await safeTokenLock.connect(alice)['withdraw(uint32)'](1)
+        const aliceTokenBalanceAfter = await safeToken.balanceOf(alice)
+        const aliceUnlockContractBalanceAfter = (await safeTokenLock.users(alice)).unlocked
+        const aliceUnlockStartAfter = (await safeTokenLock.users(alice)).unlockStart
+        const aliceUnlockEndAfter = (await safeTokenLock.users(alice)).unlockEnd
+
+        // Checking Token Balance & Unlocked Token details
+        expect(aliceTokenBalanceAfter).to.equal(aliceTokenBalanceBefore + tokenToUnlock)
+        expect(aliceUnlockContractBalanceAfter).to.equal(aliceUnlockContractBalanceBefore - tokenToUnlock)
+        expect(aliceUnlockStartAfter).to.equal(aliceUnlockStartBefore + 1n)
+        expect(aliceUnlockEndAfter).to.equal(aliceUnlockEndBefore)
+        expect((await safeTokenLock.unlocks(0, alice)).amount).to.equal(0)
+        expect((await safeTokenLock.unlocks(0, alice)).unlockedAt).to.equal(0)
+      })
+
+      it('Should allow withdraw call even if no tokens are unlocked', async function () {
+        // `withdraw()` should not revert even if there are no tokens to withdraw.
+        const { safeTokenLock, alice } = await setupTests()
+
+        // Withdrawing tokens
+        expect(await safeTokenLock.connect(alice)['withdraw(uint32)'](1)).to.not.be.reverted
+        expect(await safeTokenLock.connect(alice)['withdraw(uint32)'].staticCall(1)).to.equal(0)
+      })
+
+      it('Should not allow withdraw call with zero unlock', async function () {
+        // `withdraw()` should not revert even if there are no tokens to withdraw.
+        const { safeTokenLock, alice } = await setupTests()
+
+        // Withdrawing tokens
+        await expect(safeTokenLock.connect(alice)['withdraw(uint32)'](0)).to.be.revertedWithCustomError(safeTokenLock, 'ZeroValue()')
+      })
+
+      it('Should withdraw multiple unlocked tokens together', async function () {
+        const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
+        const tokenToLock = ethers.parseUnits('10', 20) // 1000 tokens
+        const tokenToUnlock = ethers.parseUnits('1', 20) // 100 tokens
+
+        // Transfer tokens to Alice
+        await transferToken(safeToken, tokenCollector, alice, tokenToLock)
+
+        // Locking tokens
+        await safeToken.connect(alice).approve(safeTokenLock, tokenToLock)
+        await safeTokenLock.connect(alice).lock(tokenToLock)
+
+        // Unlocking tokens multiple times
+        let index = 0
+        for (; index < 5; index++) {
+          await safeTokenLock.connect(alice).unlock(tokenToUnlock)
+        }
+
+        // Getting unlocked at timestamp and increasing timestamp
+        const unlockedAt = (await safeTokenLock.unlocks(index - 1, alice)).unlockedAt
+        await time.increaseTo(unlockedAt)
+
+        // Withdrawing tokens
+        const aliceTokenBalanceBefore = await safeToken.balanceOf(alice)
+        const aliceUnlockContractBalanceBefore = (await safeTokenLock.users(alice)).unlocked
+        const aliceUnlockStartBefore = (await safeTokenLock.users(alice)).unlockStart
+        const aliceUnlockEndBefore = (await safeTokenLock.users(alice)).unlockEnd
+        await safeTokenLock.connect(alice)['withdraw(uint32)'](5)
+        const aliceTokenBalanceAfter = await safeToken.balanceOf(alice)
+        const aliceUnlockContractBalanceAfter = (await safeTokenLock.users(alice)).unlocked
+        const aliceUnlockStartAfter = (await safeTokenLock.users(alice)).unlockStart
+        const aliceUnlockEndAfter = (await safeTokenLock.users(alice)).unlockEnd
+
+        // Checking Final Token Balance & Unlocked Token details
+        expect(aliceTokenBalanceAfter).to.equal(aliceTokenBalanceBefore + tokenToUnlock * BigInt(index))
+        expect(aliceUnlockContractBalanceAfter).to.equal(aliceUnlockContractBalanceBefore - tokenToUnlock * BigInt(index))
+        expect(aliceUnlockStartAfter).to.equal(aliceUnlockStartBefore + BigInt(index))
+        expect(aliceUnlockEndAfter).to.equal(aliceUnlockEndBefore)
+
+        index = 0
+        for (; index < 5; index++) {
+          expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(0)
+          expect((await safeTokenLock.unlocks(index, alice)).unlockedAt).to.equal(0)
+        }
+      })
+
+      it('Should not revert if passed with maxUnlocks > unlock operations and withdraw based on unlock timestamp', async function () {
+        const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
+        const tokenToLock = ethers.parseUnits('10', 20) // 1000 tokens
+        const tokenToUnlock = ethers.parseUnits('1', 20) // 100 tokens
+
+        // Transfer tokens to Alice
+        await transferToken(safeToken, tokenCollector, alice, tokenToLock)
+
+        // Locking tokens
+        await safeToken.connect(alice).approve(safeTokenLock, tokenToLock)
+        await safeTokenLock.connect(alice).lock(tokenToLock)
+
+        // Unlocking tokens multiple times
+        let index = 0
+        for (; index < 5; index++) {
+          await safeTokenLock.connect(alice).unlock(tokenToUnlock)
+        }
+
+        // Getting unlocked at timestamp and increasing timestamp
+        const unlockedAt = (await safeTokenLock.unlocks(index - 1, alice)).unlockedAt
+        await time.increaseTo(unlockedAt)
+
+        // Withdrawing tokens
+        const aliceTokenBalanceBefore = await safeToken.balanceOf(alice)
+        const aliceUnlockContractBalanceBefore = (await safeTokenLock.users(alice)).unlocked
+        const aliceUnlockStartBefore = (await safeTokenLock.users(alice)).unlockStart
+        const aliceUnlockEndBefore = (await safeTokenLock.users(alice)).unlockEnd
+        await safeTokenLock.connect(alice)['withdraw(uint32)'](10)
+        const aliceTokenBalanceAfter = await safeToken.balanceOf(alice)
+        const aliceUnlockContractBalanceAfter = (await safeTokenLock.users(alice)).unlocked
+        const aliceUnlockStartAfter = (await safeTokenLock.users(alice)).unlockStart
+        const aliceUnlockEndAfter = (await safeTokenLock.users(alice)).unlockEnd
+
+        // Checking Final Token Balance & Unlocked Token details
+        expect(aliceTokenBalanceAfter).to.equal(aliceTokenBalanceBefore + tokenToUnlock * BigInt(index))
+        expect(aliceUnlockContractBalanceAfter).to.equal(aliceUnlockContractBalanceBefore - tokenToUnlock * BigInt(index))
+        expect(aliceUnlockStartAfter).to.equal(aliceUnlockStartBefore + BigInt(index))
+        expect(aliceUnlockEndAfter).to.equal(aliceUnlockEndBefore)
+
+        index = 0
+        for (; index < 5; index++) {
+          expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(0)
+          expect((await safeTokenLock.unlocks(index, alice)).unlockedAt).to.equal(0)
+        }
+      })
+
+      it('Should withdraw multiple unlocked tokens only after unlock timestamp', async function () {
+        const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
+        const tokenToLock = ethers.parseUnits('10', 20) // 1000 tokens
+        const tokenToUnlock = ethers.parseUnits('1', 20) // 100 tokens
+
+        // Transfer tokens to Alice
+        await transferToken(safeToken, tokenCollector, alice, tokenToLock)
+
+        // Locking tokens
+        await safeToken.connect(alice).approve(safeTokenLock, tokenToLock)
+        await safeTokenLock.connect(alice).lock(tokenToLock)
+
+        // Unlocking tokens multiple times
+        let index = 0
+        for (; index < 10; index++) {
+          await safeTokenLock.connect(alice).unlock(tokenToUnlock)
+          await time.increase(index + 1) // Ensuring different timestamp for each unlock
+        }
+
+        // Getting unlocked at timestamp and increasing timestamp
+        const unlockedAt = (await safeTokenLock.unlocks(index / 2 - 1, alice)).unlockedAt
+        await time.increaseTo(unlockedAt) // Only unlocking half of the unlock operations
+
+        // Withdrawing tokens
+        const aliceTokenBalanceBefore = await safeToken.balanceOf(alice)
+        const aliceUnlockContractBalanceBefore = (await safeTokenLock.users(alice)).unlocked
+        const aliceUnlockStartBefore = (await safeTokenLock.users(alice)).unlockStart
+        const aliceUnlockEndBefore = (await safeTokenLock.users(alice)).unlockEnd
+        await safeTokenLock.connect(alice)['withdraw(uint32)'](10)
+        const aliceTokenBalanceAfter = await safeToken.balanceOf(alice)
+        const aliceUnlockContractBalanceAfter = (await safeTokenLock.users(alice)).unlocked
+        const aliceUnlockStartAfter = (await safeTokenLock.users(alice)).unlockStart
+        const aliceUnlockEndAfter = (await safeTokenLock.users(alice)).unlockEnd
+
+        // Checking Final Token Balance & Unlocked Token details
+        expect(aliceTokenBalanceAfter).to.equal(aliceTokenBalanceBefore + tokenToUnlock * BigInt(index / 2))
+        expect(aliceUnlockContractBalanceAfter).to.equal(aliceUnlockContractBalanceBefore - tokenToUnlock * BigInt(index / 2))
+        expect(aliceUnlockStartAfter).to.equal(aliceUnlockStartBefore + BigInt(index / 2))
+        expect(aliceUnlockEndAfter).to.equal(aliceUnlockEndBefore)
+
+        index = 0
+        for (; index < 5; index++) {
+          expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(0)
+          expect((await safeTokenLock.unlocks(index, alice)).unlockedAt).to.equal(0)
+        }
+        for (; index < 10; index++) {
+          expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(tokenToUnlock)
+        }
+      })
+
+      it('Should only withdraw multiple unlocked tokens only until `maxUnlock` even if unlock timestamp reached for rest', async function () {
+        const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
+        const tokenToLock = ethers.parseUnits('10', 20) // 1000 tokens
+        const tokenToUnlock = ethers.parseUnits('1', 20) // 100 tokens
+
+        // Transfer tokens to Alice
+        await transferToken(safeToken, tokenCollector, alice, tokenToLock)
+
+        // Locking tokens
+        await safeToken.connect(alice).approve(safeTokenLock, tokenToLock)
+        await safeTokenLock.connect(alice).lock(tokenToLock)
+
+        // Unlocking tokens multiple times
+        let index = 0
+        for (; index < 10; index++) {
+          await safeTokenLock.connect(alice).unlock(tokenToUnlock)
+          await time.increase(index + 1) // Ensuring different timestamp for each unlock
+        }
+
+        // Getting unlocked at timestamp and increasing timestamp
+        const unlockedAt = (await safeTokenLock.unlocks(index / 2 - 1, alice)).unlockedAt
+        await time.increaseTo(unlockedAt) // Only unlocking half of the unlock operations
+
+        // Withdrawing tokens
+        const aliceTokenBalanceBefore = await safeToken.balanceOf(alice)
+        const aliceUnlockContractBalanceBefore = (await safeTokenLock.users(alice)).unlocked
+        const aliceUnlockStartBefore = (await safeTokenLock.users(alice)).unlockStart
+        const aliceUnlockEndBefore = (await safeTokenLock.users(alice)).unlockEnd
+        await safeTokenLock.connect(alice)['withdraw(uint32)'](3)
+        const aliceTokenBalanceAfter = await safeToken.balanceOf(alice)
+        const aliceUnlockContractBalanceAfter = (await safeTokenLock.users(alice)).unlocked
+        const aliceUnlockStartAfter = (await safeTokenLock.users(alice)).unlockStart
+        const aliceUnlockEndAfter = (await safeTokenLock.users(alice)).unlockEnd
+
+        // Checking Final Token Balance & Unlocked Token details
+        expect(aliceTokenBalanceAfter).to.equal(aliceTokenBalanceBefore + tokenToUnlock * 3n)
+        expect(aliceUnlockContractBalanceAfter).to.equal(aliceUnlockContractBalanceBefore - tokenToUnlock * 3n)
+        expect(aliceUnlockStartAfter).to.equal(aliceUnlockStartBefore + 3n)
+        expect(aliceUnlockEndAfter).to.equal(aliceUnlockEndBefore)
+
+        index = 0
+        for (; index < 3; index++) {
+          expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(0)
+          expect((await safeTokenLock.unlocks(index, alice)).unlockedAt).to.equal(0)
+        }
+        for (; index < 10; index++) {
+          expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(tokenToUnlock)
+        }
+      })
+
+      it('Should be possible to withdraw all tokens', async function () {
+        const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
+        const tokenToLock = safeTokenTotalSupply
+        const tokenToUnlock = safeTokenTotalSupply
+
+        // Transfer tokens to Alice
+        await transferToken(safeToken, tokenCollector, alice, tokenToLock)
+
+        // Locking tokens
+        await safeToken.connect(alice).approve(safeTokenLock, tokenToLock)
+        await safeTokenLock.connect(alice).lock(tokenToLock)
+
+        // Unlocking tokens
+        await safeTokenLock.connect(alice).unlock(tokenToUnlock)
+
+        // Getting unlocked at timestamp and increasing timestamp
+        const unlockedAt = (await safeTokenLock.unlocks(0, alice)).unlockedAt
+        await time.increaseTo(unlockedAt)
+
+        // Withdrawing tokens
+        const aliceTokenBalanceBefore = await safeToken.balanceOf(alice)
+        const aliceUnlockContractBalanceBefore = (await safeTokenLock.users(alice)).unlocked
+        const aliceUnlockStartBefore = (await safeTokenLock.users(alice)).unlockStart
+        const aliceUnlockEndBefore = (await safeTokenLock.users(alice)).unlockEnd
+        await safeTokenLock.connect(alice)['withdraw(uint32)'](1)
+        const aliceTokenBalanceAfter = await safeToken.balanceOf(alice)
+        const aliceUnlockContractBalanceAfter = (await safeTokenLock.users(alice)).unlocked
+        const aliceUnlockStartAfter = (await safeTokenLock.users(alice)).unlockStart
+        const aliceUnlockEndAfter = (await safeTokenLock.users(alice)).unlockEnd
+
+        // Checking Token Balance & Unlocked Token details
+        expect(aliceTokenBalanceAfter).to.equal(aliceTokenBalanceBefore + tokenToUnlock)
+        expect(aliceUnlockContractBalanceAfter).to.equal(aliceUnlockContractBalanceBefore - tokenToUnlock)
+        expect(aliceUnlockStartAfter).to.equal(aliceUnlockStartBefore + 1n)
+        expect(aliceUnlockEndAfter).to.equal(aliceUnlockEndBefore)
+        expect((await safeTokenLock.unlocks(0, alice)).amount).to.equal(0)
+        expect((await safeTokenLock.unlocks(0, alice)).unlockedAt).to.equal(0)
+      })
+
+      it('Should emit Withdrawn event when tokens are withdrawn correctly', async function () {
+        const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
+        const tokenToLock = ethers.parseUnits('1', 20) // 100 tokens
+        const tokenToUnlock = ethers.parseUnits('0.5', 20) // 50 tokens
+
+        // Transfer tokens to Alice
+        await transferToken(safeToken, tokenCollector, alice, tokenToLock)
+
+        // Locking tokens
+        await safeToken.connect(alice).approve(safeTokenLock, tokenToLock)
+        await safeTokenLock.connect(alice).lock(tokenToLock)
+
+        // Unlocking tokens
+        await safeTokenLock.connect(alice).unlock(tokenToUnlock)
+
+        // Getting unlocked at timestamp and increasing timestamp
+        const unlockedAt = (await safeTokenLock.unlocks(0, alice)).unlockedAt
+        await time.increaseTo(unlockedAt)
+
+        // Withdrawing tokens
+        await expect(safeTokenLock.connect(alice)['withdraw(uint32)'](1))
+          .to.emit(safeTokenLock, 'Withdrawn')
+          .withArgs(alice, 0, tokenToUnlock)
+      })
+
+      it('Should emit n Withdrawn event when n unlock operations are withdrawn correctly', async function () {
+        const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
+        const tokenToLock = ethers.parseUnits('10', 20) // 1000 tokens
+        const tokenToUnlock = ethers.parseUnits('1', 20) // 100 tokens
+
+        // Transfer tokens to Alice
+        await transferToken(safeToken, tokenCollector, alice, tokenToLock)
+
+        // Locking tokens
+        await safeToken.connect(alice).approve(safeTokenLock, tokenToLock)
+        await safeTokenLock.connect(alice).lock(tokenToLock)
+
+        // Unlocking tokens multiple times
+        let index = 0
+        for (; index < 5; index++) {
+          await safeTokenLock.connect(alice).unlock(tokenToUnlock)
+        }
+
+        // Getting unlocked at timestamp and increasing timestamp
+        const unlockedAt = (await safeTokenLock.unlocks(index - 1, alice)).unlockedAt
+        await time.increaseTo(unlockedAt)
+
+        // Withdrawing tokens
+        await expect(safeTokenLock.connect(alice)['withdraw(uint32)'](5))
+          .to.emit(safeTokenLock, 'Withdrawn')
+          .withArgs(alice, 0, tokenToUnlock)
+          .to.emit(safeTokenLock, 'Withdrawn')
+          .withArgs(alice, 1, tokenToUnlock)
+          .to.emit(safeTokenLock, 'Withdrawn')
+          .withArgs(alice, 2, tokenToUnlock)
+          .to.emit(safeTokenLock, 'Withdrawn')
+          .withArgs(alice, 3, tokenToUnlock)
+          .to.emit(safeTokenLock, 'Withdrawn')
+          .withArgs(alice, 4, tokenToUnlock)
+      })
+    })
   })
 
   describe('Recover ERC20', function () {
