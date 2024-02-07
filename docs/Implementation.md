@@ -73,7 +73,7 @@ contract SafeTokenLock is ISafeTokenLock {
         5. Transfer `amount` to `caller`.
         6. Emit the event.
 
-        Gas Usage (major usage only): SLOAD users[caller] + n SLOAD unlocks[i][caller] + (optional - only if gas refunds) n Zero assignment SSTORE unlocks[i][caller] + SSTORE users[caller] + Token Transfer + Event Emit
+        Gas Usage (major usage only): SLOAD users[caller] + n SLOAD unlocks[i][caller] + (optional - only if gas refunds) n Zero assignment SSTORE unlocks[i][caller] + SSTORE users[caller] + SLOAD SAFE_TOKEN + Token Transfer + Event Emit
         where n can be as high as `unlockEnd - unlockStart`.
     */
   }
