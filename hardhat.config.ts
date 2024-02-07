@@ -92,5 +92,9 @@ const userConfig: HardhatUserConfig = {
   etherscan: {
     apiKey: ETHERSCAN_API_KEY,
   },
+  gasReporter: {
+    enabled: true,
+    excludeContracts: ['test', 'safe-token'],
+  },
 }
 export default userConfig
