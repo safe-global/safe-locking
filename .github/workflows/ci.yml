@@ -26,6 +26,7 @@ jobs:
           cache-dependency-path: package-lock.json
       - run: npm ci
       - run: npm run build && npm run build:ts
+      - run: npm run test
       - run: npm run coverage
       # Uncomment when the repo is ready to be published
       # - name: Coveralls
