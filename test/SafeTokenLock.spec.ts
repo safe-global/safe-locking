@@ -400,6 +400,7 @@ describe('Lock', function () {
 
         // Withdrawing tokens
         expect(await safeTokenLock.connect(alice)['withdraw()']()).to.not.be.reverted
+        expect(await safeTokenLock.connect(alice)['withdraw()'].staticCall()).to.equal(0)
       })
 
       it('Should withdraw multiple unlocked tokens together', async function () {
