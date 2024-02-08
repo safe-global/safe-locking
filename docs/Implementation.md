@@ -59,7 +59,8 @@ contract SafeTokenLock is ISafeTokenLock {
     */
   }
 
-  function _withdraw(uint32 maxUnlocks) external returns (uint96 amount) {
+  // @inheritdoc ISafeTokenLock
+  function withdraw(uint32 maxUnlocks) external returns (uint96 amount) {
     /**
         1. Read the `users[caller]` to `User memory user`.
         2. Based on the passed maxUnlocks, decide on the `unlockEnd`.
@@ -75,21 +76,6 @@ contract SafeTokenLock is ISafeTokenLock {
 
         Gas Usage (major usage only): SLOAD users[caller] + n SLOAD unlocks[i][caller] + n Event Emits + n Zero assignment SSTORE unlocks[i][caller] + SSTORE users[caller] + SLOAD SAFE_TOKEN + Token Transfer
         where n can be as high as `unlockEnd - unlockStart`.
-    */
-  }
-
-  // @inheritdoc ISafeTokenLock
-  function withdraw() external returns (uint96 amount) {
-    /**
-        1. Call `_withdraw(0)`.
-    */
-  }
-
-  // @inheritdoc ISafeTokenLock
-  function withdraw(uint32 maxUnlocks) external returns (uint96 amount) {
-    /**
-        1. Check if passed `maxUnlocks` is zero. If yes, revert. Else continue.
-        2. Call `_withdraw(maxUnlocks)`.
     */
   }
 

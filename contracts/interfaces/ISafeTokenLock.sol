@@ -30,20 +30,10 @@ interface ISafeTokenLock {
     function unlock(uint96 amount) external returns (uint32 index);
 
     /**
-     * @notice Withdraws the unlocked tokens of all unlock operations initiated by the caller.
-     * @return amount The amount of tokens withdrawn.
-     * @dev Calling this function without any unlock operation or maturing unlock operation will not revert.
-     * Gas Usage (major usage only): SLOAD users[caller] + n SLOAD unlocks[i][caller] + n Event Emits
-     * + n Zero assignment SSTORE unlocks[i][caller] + SSTORE users[caller] + SLOAD SAFE_TOKEN + Token Transfer
-     * where n can be as high as `unlockEnd - unlockStart`.
-     */
-    function withdraw() external returns (uint96 amount);
-
-    /**
      * @notice Withdraws the unlocked tokens of `maxUnlocks` oldest operations initiated by the caller.
      * @param maxUnlocks The number of unlock operations to be withdrawn.
      * @return amount The amount of tokens withdrawn.
-     * @dev Calling this function with zero `maxUnlocks` will revert. This is to encourage the caller to use `withdraw` function in those cases.
+     * @dev Calling this function with zero `maxUnlocks` will result in withdrawing all matured unlock operations.
      * Gas Usage (major usage only): SLOAD users[caller] + n SLOAD unlocks[i][caller] + n Event Emits
      * + n Zero assignment SSTORE unlocks[i][caller] + SSTORE users[caller] + SLOAD SAFE_TOKEN + Token Transfer
      * where n can be as high as max(`unlockEnd - unlockStart`, `maxUnlocks`).
