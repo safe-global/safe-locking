@@ -35,12 +35,12 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
     error UnlockAmountExceeded();
     error CannotRecoverSafeToken();
 
-    constructor(address initialOwner, address safeTokenAddress, uint32 cooldownPeriod) Ownable(initialOwner) {
-        if (safeTokenAddress == address(0)) revert ZeroAddress();
-        if (cooldownPeriod == 0) revert ZeroValue();
+    constructor(address initialOwner, address _safeTokenAddress, uint32 _cooldownPeriod) Ownable(initialOwner) {
+        if (_safeTokenAddress == address(0)) revert ZeroAddress();
+        if (_cooldownPeriod == 0) revert ZeroValue();
 
-        SAFE_TOKEN = IERC20(safeTokenAddress); // Safe Token Contract Address
-        COOLDOWN_PERIOD = cooldownPeriod; // Cooldown period. Expected value to be passed is 30 days in seconds.
+        SAFE_TOKEN = IERC20(_safeTokenAddress); // Safe Token Contract Address
+        COOLDOWN_PERIOD = _cooldownPeriod; // Cooldown period. Expected value to be passed is 30 days in seconds.
     }
 
     // @inheritdoc ISafeTokenLock
@@ -56,32 +56,32 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
     function unlock(uint96 amount) external returns (uint32 index) {
         if (amount == 0) revert ZeroValue();
 
-        User memory user = users[msg.sender];
-        if (user.locked < amount) revert UnlockAmountExceeded();
+        User memory _user = users[msg.sender];
+        if (_user.locked < amount) revert UnlockAmountExceeded();
 
-        unlocks[user.unlockEnd][msg.sender] = UnlockInfo(amount, uint64(block.timestamp) + COOLDOWN_PERIOD);
-        users[msg.sender] = User(user.locked - amount, user.unlocked + amount, user.unlockStart, user.unlockEnd + 1);
-        index = user.unlockEnd;
+        unlocks[_user.unlockEnd][msg.sender] = UnlockInfo(amount, uint64(block.timestamp) + COOLDOWN_PERIOD);
+        users[msg.sender] = User(_user.locked - amount, _user.unlocked + amount, _user.unlockStart, _user.unlockEnd + 1);
+        index = _user.unlockEnd;
 
         emit Unlocked(msg.sender, index, amount);
     }
 
     function _withdraw(uint32 maxUnlocks) internal returns (uint96 amount) {
-        User memory user = users[msg.sender];
-        uint32 unlockEnd = user.unlockEnd > maxUnlocks && maxUnlocks != 0 ? maxUnlocks : user.unlockEnd;
-        uint32 index = user.unlockStart;
+        User memory _user = users[msg.sender];
+        uint32 unlockEnd = _user.unlockEnd > maxUnlocks && maxUnlocks != 0 ? maxUnlocks : _user.unlockEnd;
+        uint32 _index = _user.unlockStart;
 
-        for (; index < unlockEnd; index++) {
-            UnlockInfo memory unlockInfo = unlocks[index][msg.sender];
-            if (unlockInfo.unlockedAt > block.timestamp) break;
+        for (; _index < unlockEnd; _index++) {
+            UnlockInfo memory _unlockInfo = unlocks[_index][msg.sender];
+            if (_unlockInfo.unlockedAt > block.timestamp) break;
 
-            amount += unlockInfo.amount;
-            emit Withdrawn(msg.sender, index, unlockInfo.amount);
-            delete unlocks[index][msg.sender];
+            amount += _unlockInfo.amount;
+            emit Withdrawn(msg.sender, _index, _unlockInfo.amount);
+            delete unlocks[_index][msg.sender];
         }
 
         if (amount > 0) {
-            users[msg.sender] = User(user.locked, user.unlocked - amount, index, user.unlockEnd);
+            users[msg.sender] = User(_user.locked, _user.unlocked - amount, _index, _user.unlockEnd);
             SAFE_TOKEN.transfer(msg.sender, uint256(amount));
         }
     }
