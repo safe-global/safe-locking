@@ -701,6 +701,85 @@ describe('Lock', function () {
         }
       })
 
+      it('Should withdraw multiple times correctly', async function () {
+        const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
+        const tokenToLock = ethers.parseUnits('10', 20) // 1000 tokens
+        const tokenToUnlock = ethers.parseUnits('1', 20) // 100 tokens
+
+        // Transfer tokens to Alice
+        await transferToken(safeToken, tokenCollector, alice, tokenToLock)
+
+        // Locking tokens
+        await safeToken.connect(alice).approve(safeTokenLock, tokenToLock)
+        await safeTokenLock.connect(alice).lock(tokenToLock)
+
+        // Unlocking tokens multiple times
+        let index = 0
+        for (; index < 10; index++) {
+          await safeTokenLock.connect(alice).unlock(tokenToUnlock)
+        }
+
+        // Getting unlocked at timestamp and increasing timestamp
+        let unlockedAt = (await safeTokenLock.unlocks(5, alice)).unlockedAt
+        await time.increaseTo(unlockedAt)
+
+        // Withdrawing tokens for first 3 unlocks (even though 5 unlocks are matured.)
+        let aliceTokenBalanceBefore = await safeToken.balanceOf(alice)
+        let aliceUnlockContractBalanceBefore = (await safeTokenLock.users(alice)).unlocked
+        let aliceUnlockStartBefore = (await safeTokenLock.users(alice)).unlockStart
+        let aliceUnlockEndBefore = (await safeTokenLock.users(alice)).unlockEnd
+        await safeTokenLock.connect(alice)['withdraw(uint32)'](3)
+        let aliceTokenBalanceAfter = await safeToken.balanceOf(alice)
+        let aliceUnlockContractBalanceAfter = (await safeTokenLock.users(alice)).unlocked
+        let aliceUnlockStartAfter = (await safeTokenLock.users(alice)).unlockStart
+        let aliceUnlockEndAfter = (await safeTokenLock.users(alice)).unlockEnd
+
+        // Checking Intermediate Token Balance & Unlocked Token details
+        expect(aliceTokenBalanceAfter).to.equal(aliceTokenBalanceBefore + tokenToUnlock * BigInt(3))
+        expect(aliceUnlockContractBalanceAfter).to.equal(aliceUnlockContractBalanceBefore - tokenToUnlock * BigInt(3))
+        expect(aliceUnlockStartAfter).to.equal(aliceUnlockStartBefore + BigInt(3))
+        expect(aliceUnlockEndAfter).to.equal(aliceUnlockEndBefore)
+
+        index = 0
+        for (; index < 3; index++) {
+          expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(0)
+          expect((await safeTokenLock.unlocks(index, alice)).unlockedAt).to.equal(0)
+        }
+        for (; index < 10; index++) {
+          expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(tokenToUnlock)
+        }
+
+        // Getting unlocked at timestamp and increasing timestamp
+        unlockedAt = (await safeTokenLock.unlocks(index - 1, alice)).unlockedAt
+        await time.increaseTo(unlockedAt)
+
+        // Withdrawing tokens for next 3 unlocks (even though next 7 unlocks are matured.)
+        aliceTokenBalanceBefore = await safeToken.balanceOf(alice)
+        aliceUnlockContractBalanceBefore = (await safeTokenLock.users(alice)).unlocked
+        aliceUnlockStartBefore = (await safeTokenLock.users(alice)).unlockStart
+        aliceUnlockEndBefore = (await safeTokenLock.users(alice)).unlockEnd
+        await safeTokenLock.connect(alice)['withdraw(uint32)'](3)
+        aliceTokenBalanceAfter = await safeToken.balanceOf(alice)
+        aliceUnlockContractBalanceAfter = (await safeTokenLock.users(alice)).unlocked
+        aliceUnlockStartAfter = (await safeTokenLock.users(alice)).unlockStart
+        aliceUnlockEndAfter = (await safeTokenLock.users(alice)).unlockEnd
+
+        // Checking Intermediate Token Balance & Unlocked Token details
+        expect(aliceTokenBalanceAfter).to.equal(aliceTokenBalanceBefore + tokenToUnlock * BigInt(3))
+        expect(aliceUnlockContractBalanceAfter).to.equal(aliceUnlockContractBalanceBefore - tokenToUnlock * BigInt(3))
+        expect(aliceUnlockStartAfter).to.equal(aliceUnlockStartBefore + BigInt(3))
+        expect(aliceUnlockEndAfter).to.equal(aliceUnlockEndBefore)
+
+        index = 0
+        for (; index < 6; index++) {
+          expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(0)
+          expect((await safeTokenLock.unlocks(index, alice)).unlockedAt).to.equal(0)
+        }
+        for (; index < 10; index++) {
+          expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(tokenToUnlock)
+        }
+      })
+
       it('Should not revert if passed with maxUnlocks > unlock operations and withdraw based on unlock timestamp', async function () {
         const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
         const tokenToLock = ethers.parseUnits('10', 20) // 1000 tokens

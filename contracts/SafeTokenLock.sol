@@ -68,8 +68,8 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
 
     function _withdraw(uint32 maxUnlocks) internal returns (uint96 amount) {
         User memory _user = users[msg.sender];
-        uint32 unlockEnd = _user.unlockEnd > maxUnlocks && maxUnlocks != 0 ? maxUnlocks : _user.unlockEnd;
         uint32 _index = _user.unlockStart;
+        uint32 unlockEnd = _user.unlockEnd > _index + maxUnlocks && maxUnlocks != 0 ? _index + maxUnlocks : _user.unlockEnd;
 
         for (; _index < unlockEnd; _index++) {
             UnlockInfo memory _unlockInfo = unlocks[_index][msg.sender];
