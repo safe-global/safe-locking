@@ -51,7 +51,7 @@ describe('Lock', function () {
   describe('Locking', function () {
     it('Should lock tokens correctly', async function () {
       const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
-      const tokenToLock = ethers.parseUnits('1', 20) // 100 tokens
+      const tokenToLock = ethers.parseUnits('100', 18)
 
       // Transfer tokens to Alice
       await transferToken(safeToken, tokenCollector, alice, tokenToLock)
@@ -77,7 +77,7 @@ describe('Lock', function () {
 
     it('Should not lock if token transfer is not approved', async function () {
       const { safeTokenLock, alice } = await setupTests()
-      const tokenToLock = ethers.parseUnits('1', 20) // 100 tokens
+      const tokenToLock = ethers.parseUnits('100', 18)
 
       // Locking tokens without approval
       await expect(safeTokenLock.connect(alice).lock(tokenToLock)).to.be.revertedWith('ERC20: insufficient allowance')
@@ -85,8 +85,8 @@ describe('Lock', function () {
 
     it('Should lock tokens correctly multiple times', async function () {
       const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
-      const totalTokensToLock = ethers.parseUnits('10', 20) // 1000 tokens
-      const tokenToLock = ethers.parseUnits('2', 20) // 200 tokens
+      const totalTokensToLock = ethers.parseUnits('1000', 18)
+      const tokenToLock = ethers.parseUnits('200', 18)
 
       // Transfer tokens to Alice
       await transferToken(safeToken, tokenCollector, alice, totalTokensToLock)
@@ -128,7 +128,7 @@ describe('Lock', function () {
 
     it('Should not lock tokens without transferring token', async function () {
       const { safeToken, safeTokenLock, alice } = await setupTests()
-      const tokenToLock = ethers.parseUnits('1', 20) // 100 tokens
+      const tokenToLock = ethers.parseUnits('100', 18)
 
       // Approving without having any token balance.
       expect(await safeToken.balanceOf(alice)).to.equal(0)
@@ -140,7 +140,7 @@ describe('Lock', function () {
 
     it('Should emit Locked event when tokens are locked correctly', async function () {
       const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
-      const tokenToLock = ethers.parseUnits('1', 20) // 100 tokens
+      const tokenToLock = ethers.parseUnits('100', 18)
 
       // Transfer tokens to Alice
       await transferToken(safeToken, tokenCollector, alice, tokenToLock)
@@ -154,8 +154,8 @@ describe('Lock', function () {
   describe('Unlocking', function () {
     it('Should unlock tokens correctly', async function () {
       const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
-      const tokenToLock = ethers.parseUnits('1', 20) // 100 tokens
-      const tokenToUnlock = ethers.parseUnits('0.5', 20) // 50 tokens
+      const tokenToLock = ethers.parseUnits('100', 18)
+      const tokenToUnlock = ethers.parseUnits('50', 18)
 
       // Transfer tokens to Alice
       await transferToken(safeToken, tokenCollector, alice, tokenToLock)
@@ -191,8 +191,8 @@ describe('Lock', function () {
 
     it('Should not unlock is amount > total locked tokens', async function () {
       const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
-      const tokenToLock = ethers.parseUnits('0.5', 20) // 50 tokens
-      const tokenToUnlock = ethers.parseUnits('1', 20) // 100 tokens
+      const tokenToLock = ethers.parseUnits('50', 18)
+      const tokenToUnlock = ethers.parseUnits('100', 18)
 
       // Transfer tokens to Alice
       await transferToken(safeToken, tokenCollector, alice, tokenToLock)
@@ -210,8 +210,8 @@ describe('Lock', function () {
 
     it('Should unlock tokens correctly multiple times', async function () {
       const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
-      const tokenToLock = ethers.parseUnits('10', 20) // 1000 tokens
-      const tokenToUnlock = ethers.parseUnits('1', 20) // 100 tokens
+      const tokenToLock = ethers.parseUnits('1000', 18)
+      const tokenToUnlock = ethers.parseUnits('100', 18)
 
       // Transfer tokens to Alice
       await transferToken(safeToken, tokenCollector, alice, tokenToLock)
@@ -281,8 +281,8 @@ describe('Lock', function () {
     it('Should not reduce the total token before unlock', async function () {
       // Total tokens can increase but not decrease during an unlock operation.
       const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
-      const tokenToLock = ethers.parseUnits('1', 20) // 100 tokens
-      const tokenToUnlock = ethers.parseUnits('0.5', 20) // 50 tokens
+      const tokenToLock = ethers.parseUnits('100', 18)
+      const tokenToUnlock = ethers.parseUnits('50', 18)
 
       // Transfer tokens to Alice
       await transferToken(safeToken, tokenCollector, alice, tokenToLock)
@@ -302,8 +302,8 @@ describe('Lock', function () {
 
     it('Should emit Unlocked event when tokens are unlocked correctly', async function () {
       const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
-      const tokenToLock = ethers.parseUnits('1', 20) // 100 tokens
-      const tokenToUnlock = ethers.parseUnits('0.5', 20) // 50 tokens
+      const tokenToLock = ethers.parseUnits('100', 18)
+      const tokenToUnlock = ethers.parseUnits('50', 18)
 
       // Transfer tokens to Alice
       await transferToken(safeToken, tokenCollector, alice, tokenToLock)
@@ -318,10 +318,10 @@ describe('Lock', function () {
 
     it('Unlock Index can be same for two different user with two different locked and unlocked amount', async function () {
       const { safeToken, safeTokenLock, tokenCollector, alice, bob } = await setupTests()
-      const tokenToLockAlice = ethers.parseUnits('1', 20) // 100 tokens
-      const tokenToUnlockAlice = ethers.parseUnits('0.5', 20) // 50 tokens
-      const tokenToLockBob = ethers.parseUnits('0.8', 20) // 80 tokens
-      const tokenToUnlockBob = ethers.parseUnits('0.4', 20) // 40 tokens
+      const tokenToLockAlice = ethers.parseUnits('100', 18)
+      const tokenToUnlockAlice = ethers.parseUnits('50', 18)
+      const tokenToLockBob = ethers.parseUnits('80', 18)
+      const tokenToUnlockBob = ethers.parseUnits('40', 18)
       const cooldownPeriod = await safeTokenLock.COOLDOWN_PERIOD()
       const index = 0 // Unlock Index shared by Alice & Bob
 
@@ -357,8 +357,8 @@ describe('Lock', function () {
     describe('Withdraw()', function () {
       it('Should withdraw tokens correctly', async function () {
         const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
-        const tokenToLock = ethers.parseUnits('1', 20) // 100 tokens
-        const tokenToUnlock = ethers.parseUnits('0.5', 20) // 50 tokens
+        const tokenToLock = ethers.parseUnits('100', 18)
+        const tokenToUnlock = ethers.parseUnits('50', 18)
 
         // Transfer tokens to Alice
         await transferToken(safeToken, tokenCollector, alice, tokenToLock)
@@ -405,8 +405,8 @@ describe('Lock', function () {
 
       it('Should withdraw multiple unlocked tokens together', async function () {
         const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
-        const tokenToLock = ethers.parseUnits('10', 20) // 1000 tokens
-        const tokenToUnlock = ethers.parseUnits('1', 20) // 100 tokens
+        const tokenToLock = ethers.parseUnits('1000', 18)
+        const tokenToUnlock = ethers.parseUnits('100', 18)
 
         // Transfer tokens to Alice
         await transferToken(safeToken, tokenCollector, alice, tokenToLock)
@@ -451,8 +451,8 @@ describe('Lock', function () {
 
       it('Should withdraw multiple unlocked tokens only after unlock timestamp', async function () {
         const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
-        const tokenToLock = ethers.parseUnits('10', 20) // 1000 tokens
-        const tokenToUnlock = ethers.parseUnits('1', 20) // 100 tokens
+        const tokenToLock = ethers.parseUnits('1000', 18)
+        const tokenToUnlock = ethers.parseUnits('100', 18)
 
         // Transfer tokens to Alice
         await transferToken(safeToken, tokenCollector, alice, tokenToLock)
@@ -540,8 +540,8 @@ describe('Lock', function () {
 
       it('Should emit Withdrawn event when tokens are withdrawn correctly', async function () {
         const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
-        const tokenToLock = ethers.parseUnits('1', 20) // 100 tokens
-        const tokenToUnlock = ethers.parseUnits('0.5', 20) // 50 tokens
+        const tokenToLock = ethers.parseUnits('100', 18)
+        const tokenToUnlock = ethers.parseUnits('50', 18)
 
         // Transfer tokens to Alice
         await transferToken(safeToken, tokenCollector, alice, tokenToLock)
@@ -563,8 +563,8 @@ describe('Lock', function () {
 
       it('Should emit n Withdrawn event when n unlock operations are withdrawn correctly', async function () {
         const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
-        const tokenToLock = ethers.parseUnits('10', 20) // 1000 tokens
-        const tokenToUnlock = ethers.parseUnits('1', 20) // 100 tokens
+        const tokenToLock = ethers.parseUnits('1000', 18)
+        const tokenToUnlock = ethers.parseUnits('100', 18)
 
         // Transfer tokens to Alice
         await transferToken(safeToken, tokenCollector, alice, tokenToLock)
@@ -601,8 +601,8 @@ describe('Lock', function () {
     describe('Withdraw(uint32)', function () {
       it('Should withdraw tokens correctly', async function () {
         const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
-        const tokenToLock = ethers.parseUnits('1', 20) // 100 tokens
-        const tokenToUnlock = ethers.parseUnits('0.5', 20) // 50 tokens
+        const tokenToLock = ethers.parseUnits('100', 18)
+        const tokenToUnlock = ethers.parseUnits('50', 18)
 
         // Transfer tokens to Alice
         await transferToken(safeToken, tokenCollector, alice, tokenToLock)
@@ -657,8 +657,8 @@ describe('Lock', function () {
 
       it('Should withdraw multiple unlocked tokens together', async function () {
         const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
-        const tokenToLock = ethers.parseUnits('10', 20) // 1000 tokens
-        const tokenToUnlock = ethers.parseUnits('1', 20) // 100 tokens
+        const tokenToLock = ethers.parseUnits('1000', 18)
+        const tokenToUnlock = ethers.parseUnits('100', 18)
 
         // Transfer tokens to Alice
         await transferToken(safeToken, tokenCollector, alice, tokenToLock)
@@ -703,8 +703,8 @@ describe('Lock', function () {
 
       it('Should withdraw multiple times correctly', async function () {
         const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
-        const tokenToLock = ethers.parseUnits('10', 20) // 1000 tokens
-        const tokenToUnlock = ethers.parseUnits('1', 20) // 100 tokens
+        const tokenToLock = ethers.parseUnits('1000', 18)
+        const tokenToUnlock = ethers.parseUnits('100', 18)
 
         // Transfer tokens to Alice
         await transferToken(safeToken, tokenCollector, alice, tokenToLock)
@@ -782,8 +782,8 @@ describe('Lock', function () {
 
       it('Should not revert if passed with maxUnlocks > unlock operations and withdraw based on unlock timestamp', async function () {
         const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
-        const tokenToLock = ethers.parseUnits('10', 20) // 1000 tokens
-        const tokenToUnlock = ethers.parseUnits('1', 20) // 100 tokens
+        const tokenToLock = ethers.parseUnits('1000', 18)
+        const tokenToUnlock = ethers.parseUnits('100', 18)
 
         // Transfer tokens to Alice
         await transferToken(safeToken, tokenCollector, alice, tokenToLock)
@@ -828,8 +828,8 @@ describe('Lock', function () {
 
       it('Should withdraw multiple unlocked tokens only after unlock timestamp', async function () {
         const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
-        const tokenToLock = ethers.parseUnits('10', 20) // 1000 tokens
-        const tokenToUnlock = ethers.parseUnits('1', 20) // 100 tokens
+        const tokenToLock = ethers.parseUnits('1000', 18)
+        const tokenToUnlock = ethers.parseUnits('100', 18)
 
         // Transfer tokens to Alice
         await transferToken(safeToken, tokenCollector, alice, tokenToLock)
@@ -878,8 +878,8 @@ describe('Lock', function () {
 
       it('Should only withdraw multiple unlocked tokens only until `maxUnlock` even if unlock timestamp reached for rest', async function () {
         const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
-        const tokenToLock = ethers.parseUnits('10', 20) // 1000 tokens
-        const tokenToUnlock = ethers.parseUnits('1', 20) // 100 tokens
+        const tokenToLock = ethers.parseUnits('1000', 18)
+        const tokenToUnlock = ethers.parseUnits('100', 18)
 
         // Transfer tokens to Alice
         await transferToken(safeToken, tokenCollector, alice, tokenToLock)
@@ -967,8 +967,8 @@ describe('Lock', function () {
 
       it('Should emit Withdrawn event when tokens are withdrawn correctly', async function () {
         const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
-        const tokenToLock = ethers.parseUnits('1', 20) // 100 tokens
-        const tokenToUnlock = ethers.parseUnits('0.5', 20) // 50 tokens
+        const tokenToLock = ethers.parseUnits('100', 18)
+        const tokenToUnlock = ethers.parseUnits('50', 18)
 
         // Transfer tokens to Alice
         await transferToken(safeToken, tokenCollector, alice, tokenToLock)
@@ -992,8 +992,8 @@ describe('Lock', function () {
 
       it('Should emit n Withdrawn event when n unlock operations are withdrawn correctly', async function () {
         const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
-        const tokenToLock = ethers.parseUnits('10', 20) // 1000 tokens
-        const tokenToUnlock = ethers.parseUnits('1', 20) // 100 tokens
+        const tokenToLock = ethers.parseUnits('1000', 18)
+        const tokenToUnlock = ethers.parseUnits('100', 18)
 
         // Transfer tokens to Alice
         await transferToken(safeToken, tokenCollector, alice, tokenToLock)
