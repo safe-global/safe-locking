@@ -32,10 +32,6 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
 
     /// @notice Error indicating an attempt to use the zero address.
     error ZeroAddress();
-    /// @notice Error indicating an attempt to use a zero value.
-    error ZeroValue();
-    /// @notice Error indicating an attempt to unlock an amount that exceeds the locked amount.
-    error UnlockAmountExceeded();
     /// @notice Error indicating an attempt to recover Safe token.
     error CannotRecoverSafeToken();
 
@@ -55,7 +51,6 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
 
     /**
      * @inheritdoc ISafeTokenLock
-     * @param amount The amount of tokens to lock. The function will revert with custom error ZeroValue() in case amount is 0.
      */
     function lock(uint96 amount) external {
         if (amount == 0) revert ZeroValue();
@@ -67,8 +62,6 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
 
     /**
      * @inheritdoc ISafeTokenLock
-     * @param amount The amount of tokens to lock. The function will revert with custom error ZeroValue() in case amount is 0.
-     *               The function will revert with custom error UnlockAmountExceeded() in case amount is greater than the locked amount.
      */
     function unlock(uint96 amount) external returns (uint32 index) {
         if (amount == 0) revert ZeroValue();
