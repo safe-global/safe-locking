@@ -193,7 +193,7 @@ rule unlockTimestampOnlyIncreases(uint32 x, uint32 y) {
 }
 
 // invariant: if there is an unlock, then start must be less than end
-invariant unlockIndexInBetweenStartAndEnd(address u)
+invariant unlockStartLessThanUnlockEnd(address u)
     (getUser(u).unlocked > 0) => getUser(u).unlockStart < getUser(u).unlockEnd;
 
 rule unlockTimestampNeverZero() {
