@@ -34,7 +34,7 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
     error ZeroAddress();
     /// @notice Error indicating an attempt to use a zero value.
     error ZeroValue();
-    /// @notice Error indicating an attempt to unlock an amount that exceeds the limit.
+    /// @notice Error indicating an attempt to unlock an amount that exceeds the locked amount.
     error UnlockAmountExceeded();
     /// @notice Error indicating an attempt to recover Safe token.
     error CannotRecoverSafeToken();
