@@ -36,7 +36,7 @@ describe('Lock', function () {
       const { owner } = await setupTests()
       await expect(SafeTokenLock.deploy(owner.address, ZeroAddress, cooldownPeriod)).to.be.revertedWithCustomError(
         SafeTokenLock,
-        'ZeroAddress()',
+        'InvalidSafeTokenAddress()',
       )
     })
 

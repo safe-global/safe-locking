@@ -30,19 +30,19 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
     mapping(address => User) public users; // Contains the address => user info struct.
     mapping(uint32 => mapping(address => UnlockInfo)) public unlocks; // Contains the Unlock id => user => Unlock Info struct.
 
-    /// @notice Error indicating an attempt to use the zero address.
-    error ZeroAddress();
-    /// @notice Error indicating an attempt to recover Safe token.
+    /* @notice Error indicating an attempt to use the zero address. */
+    error InvalidSafeTokenAddress();
+    /* @notice Error indicating an attempt to recover Safe token. */
     error CannotRecoverSafeToken();
 
     /**
      * @notice Sets the immutables of the contract and the initial owner.
      * @param initialOwner Initial owner of the contract.
-     * @param safeTokenAddress Address of the Safe token. Passing address(0) will revert with custom error ZeroAddress().
+     * @param safeTokenAddress Address of the Safe token. Passing address(0) will revert with custom error InvalidSafeTokenAddress().
      * @param cooldownPeriod A uint32 type indicating the minimum period after which Safe token withdrawal can be performed. Passing zero will revert with the custom error ZeroValue().
      */
     constructor(address initialOwner, address safeTokenAddress, uint32 cooldownPeriod) Ownable(initialOwner) {
-        if (safeTokenAddress == address(0)) revert ZeroAddress();
+        if (safeTokenAddress == address(0)) revert InvalidSafeTokenAddress();
         if (cooldownPeriod == 0) revert ZeroValue();
 
         SAFE_TOKEN = IERC20(safeTokenAddress); // Safe Token Contract Address
