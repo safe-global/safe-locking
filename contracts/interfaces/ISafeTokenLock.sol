@@ -11,14 +11,24 @@ interface ISafeTokenLock {
     event Unlocked(address indexed holder, uint32 indexed index, uint96 amount);
     event Withdrawn(address indexed holder, uint32 indexed index, uint96 amount);
 
-    /// @notice Error indicating an attempt to use a zero value.
-    error ZeroValue();
-    /// @notice Error indicating an attempt to unlock an amount that exceeds the limit.
+    /*
+     * @notice Error indicating an attempt to use zero as cooldown period value.
+     */
+    error InvalidCooldownPeriod();
+
+    /*
+     * @notice Error indicating an attempt to use zero tokens for locking and unlocking.
+     */
+    error InvalidTokenAmount();
+
+    /*
+     * @notice Error indicating an attempt to unlock an amount that exceeds the limit.
+     */
     error UnlockAmountExceeded();
 
     /**
      * @notice Locks the specified amount of tokens.
-     * @param amount The amount of tokens to lock. The function will revert with custom error ZeroValue() in case amount is 0.
+     * @param amount The amount of tokens to lock. The function will revert with custom error InvalidTokenAmount() in case amount is 0.
      * @dev Safe Token Supply = 1 Billion with 18 decimals which is < 2 ** 96
      * Does not allow locking zero tokens.
      * Gas Usage (major): Token Transfer + SLOAD & SSTORE users[msg.sender] + Emit Event
@@ -27,7 +37,7 @@ interface ISafeTokenLock {
 
     /**
      * @notice Unlocks the specified amount of tokens.
-     * @param amount The amount of tokens to lock. The function will revert with custom error ZeroValue() in case amount is 0.
+     * @param amount The amount of tokens to lock. The function will revert with custom error InvalidTokenAmount() in case amount is 0.
      *               The function will revert with custom error UnlockAmountExceeded() in case amount is greater than the locked amount.
      * @return index The index of the unlock operation.
      * @dev Does not allow unlocking zero tokens.

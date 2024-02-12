@@ -34,18 +34,21 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
      * @notice Error indicating an attempt to use the zero address as Safe Token address.
      */
     error InvalidSafeTokenAddress();
-    /* @notice Error indicating an attempt to recover Safe token. */
+
+    /*
+     * @notice Error indicating an attempt to recover Safe token.
+     */
     error CannotRecoverSafeToken();
 
     /**
      * @notice Sets the immutables of the contract and the initial owner.
      * @param initialOwner Initial owner of the contract.
      * @param safeTokenAddress Address of the Safe token. Passing address(0) will revert with custom error InvalidSafeTokenAddress().
-     * @param cooldownPeriod A uint32 type indicating the minimum period after which Safe token withdrawal can be performed. Passing zero will revert with the custom error ZeroValue().
+     * @param cooldownPeriod A uint32 type indicating the minimum period after which Safe token withdrawal can be performed. Passing zero will revert with the custom error InvalidTokenAmount().
      */
     constructor(address initialOwner, address safeTokenAddress, uint32 cooldownPeriod) Ownable(initialOwner) {
         if (safeTokenAddress == address(0)) revert InvalidSafeTokenAddress();
-        if (cooldownPeriod == 0) revert ZeroValue();
+        if (cooldownPeriod == 0) revert InvalidCooldownPeriod();
 
         SAFE_TOKEN = IERC20(safeTokenAddress); // Safe Token Contract Address
         COOLDOWN_PERIOD = cooldownPeriod; // Cooldown period. Expected value to be passed is 30 days in seconds.
@@ -55,7 +58,7 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
      * @inheritdoc ISafeTokenLock
      */
     function lock(uint96 amount) external {
-        if (amount == 0) revert ZeroValue();
+        if (amount == 0) revert InvalidTokenAmount();
         SAFE_TOKEN.transferFrom(msg.sender, address(this), amount);
 
         users[msg.sender].locked += amount;
@@ -66,7 +69,7 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
      * @inheritdoc ISafeTokenLock
      */
     function unlock(uint96 amount) external returns (uint32 index) {
-        if (amount == 0) revert ZeroValue();
+        if (amount == 0) revert InvalidTokenAmount();
 
         User memory user = users[msg.sender];
         if (user.locked < amount) revert UnlockAmountExceeded();
@@ -78,7 +81,9 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
         emit Unlocked(msg.sender, index, amount);
     }
 
-    // @inheritdoc ISafeTokenLock
+    /**
+     * @inheritdoc ISafeTokenLock
+     */
     function withdraw(uint32 maxUnlocks) external returns (uint96 amount) {
         User memory user = users[msg.sender];
         uint32 index = user.unlockStart;
@@ -99,7 +104,9 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
         }
     }
 
-    // @inheritdoc ISafeTokenLock
+    /*
+     * @inheritdoc ISafeTokenLock
+     */
     function totalBalance(address holder) external view returns (uint96 amount) {
         return users[holder].locked + users[holder].unlocked;
     }
