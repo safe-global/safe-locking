@@ -30,7 +30,9 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
     mapping(address => User) public users; // Contains the address => user info struct.
     mapping(uint32 => mapping(address => UnlockInfo)) public unlocks; // Contains the Unlock id => user => Unlock Info struct.
 
-    /* @notice Error indicating an attempt to use the zero address. */
+    /**
+     * @notice Error indicating an attempt to use the zero address as Safe Token address.
+     */
     error InvalidSafeTokenAddress();
     /* @notice Error indicating an attempt to recover Safe token. */
     error CannotRecoverSafeToken();
