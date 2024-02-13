@@ -12,7 +12,7 @@ interface ISafeTokenLock {
     event Withdrawn(address indexed holder, uint32 indexed index, uint96 amount);
 
     /*
-     * @notice Error indicating an attempt to use zero tokens for locking and unlocking.
+     * @notice Error indicating an attempt to use zero tokens when locking or unlocking.
      */
     error InvalidTokenAmount();
 
