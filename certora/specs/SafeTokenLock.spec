@@ -5,7 +5,6 @@ methods {
     // SafeTokenLock functions
     function lock(uint96) external returns(uint32);
     function unlock(uint32, uint96) external returns(bool);
-    function withdraw() external returns(bool);
     function withdraw(uint32) external returns (uint96);
 
     // Harnessed functions
@@ -20,7 +19,6 @@ methods {
 definition onlyStateChangingAction(method f) returns bool =
     f.selector == sig:lock(uint96).selector
     || f.selector == sig:unlock(uint96).selector
-    || f.selector == sig:withdraw().selector
     || f.selector == sig:withdraw(uint32).selector;
 
 // a cvl function for precondition assumptions 
@@ -76,7 +74,7 @@ rule cannotWithdrawMoreThanUnlocked(method f) {
     setup(e);
     uint256 balanceBefore = safeToken.balanceOf(e, e.msg.sender);
     mathint beforeWithdraw = userUnlocks[e.msg.sender];
-    withdraw(e);
+    withdraw(e, 0);
     require !lastReverted;
     uint256 balanceAfter = safeToken.balanceOf(e, e.msg.sender);
     assert to_mathint(balanceAfter) == balanceBefore + beforeWithdraw;
@@ -93,7 +91,7 @@ rule cannotWithdrawBeforeCooldown(method f) {
     maturesAtTimestamp = unlockInfo.unlockedAt;
     amount = unlockInfo.amount;
     require maturesAtTimestamp < e.block.timestamp && amount > 0;
-    withdraw@withrevert(e);
+    withdraw@withrevert(e, 0);
     assert lastReverted;
 }
 
@@ -161,7 +159,7 @@ rule possibleToFullyWithdraw(address sender, uint96 amount) {
 
     unlock(eU, unlockAmount);
 
-    withdraw(eW);
+    withdraw(eW, 0);
     satisfy (balanceBefore == safeToken.balanceOf(sender));
 }
 
