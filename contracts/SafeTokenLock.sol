@@ -118,7 +118,7 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
 
     /**
      * @dev Transfers the specified amount of tokens from the contract to the owner. Only the owner can call this function.
-     * @param token Address of the token to be recovered. The function will revert with custom error {CannotRecoverSafeToken} in case token is SAFE_TOKEN.
+     * @param token Address of the token to be recovered. The function will revert with {CannotRecoverSafeToken} in case `token` is {SAFE_TOKEN}.
      * @param amount The amount of tokens to transfer.
      */
     function recoverERC20(IERC20 token, uint256 amount) external onlyOwner {
