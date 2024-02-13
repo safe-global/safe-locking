@@ -32,8 +32,8 @@ interface ISafeTokenLock {
 
     /**
      * @notice Unlocks the specified amount of tokens.
-     * @param amount The amount of tokens to lock. The function will revert with custom error InvalidTokenAmount() in case amount is 0.
-     *               The function will revert with custom error UnlockAmountExceeded() in case amount is greater than the locked amount.
+     * @param amount The amount of tokens to lock. The function will revert with custom error {InvalidTokenAmount} in case amount is 0.
+     *               The function will revert with custom error {UnlockAmountExceeded} in case amount is greater than the locked amount.
      * @return index The index of the unlock operation.
      * @dev Does not allow unlocking zero tokens.
      * Gas Usage (major): SLOAD & SSTORE users[msg.sender] + SLOAD COOLDOWN_PERIOD + SSTORE UnlockInfo + Emit Event

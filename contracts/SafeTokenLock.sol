@@ -48,8 +48,8 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
     /**
      * @notice Sets the immutables of the contract and the initial owner.
      * @param initialOwner Initial owner of the contract.
-     * @param safeTokenAddress Address of the Safe token. Passing address(0) will revert with custom error InvalidSafeTokenAddress().
-     * @param cooldownPeriod A uint32 type indicating the minimum period in seconds after which Safe token withdrawal can be performed. Passing zero will revert with the custom error InvalidTokenAmount().
+     * @param safeTokenAddress Address of the Safe token. Passing address(0) will revert with custom error {InvalidSafeTokenAddress}.
+     * @param cooldownPeriod A uint32 type indicating the minimum period in seconds after which Safe token withdrawal can be performed. Passing zero will revert with the custom error {InvalidTokenAmount}.
      */
     constructor(address initialOwner, address safeTokenAddress, uint32 cooldownPeriod) Ownable(initialOwner) {
         if (safeTokenAddress == address(0)) revert InvalidSafeTokenAddress();
@@ -118,7 +118,7 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
 
     /**
      * @dev Transfers the specified amount of tokens from the contract to the owner. Only the owner can call this function.
-     * @param token Address of the token to be recovered. The function will revert with custom error CannotRecoverSafeToken() in case token is SAFE_TOKEN.
+     * @param token Address of the token to be recovered. The function will revert with custom error {CannotRecoverSafeToken} in case token is SAFE_TOKEN.
      * @param amount The amount of tokens to transfer.
      */
     function recoverERC20(IERC20 token, uint256 amount) external onlyOwner {
