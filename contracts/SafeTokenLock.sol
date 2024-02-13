@@ -35,7 +35,7 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
      */
     error InvalidSafeTokenAddress();
 
-    /*
+    /**
      * @notice Error indicating an attempt to use zero as cooldown period value.
      */
     error InvalidCooldownPeriod();
