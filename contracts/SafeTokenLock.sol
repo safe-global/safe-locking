@@ -49,7 +49,7 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
      * @notice Sets the immutables of the contract and the initial owner.
      * @param initialOwner Initial owner of the contract.
      * @param safeTokenAddress Address of the Safe token. Passing address(0) will revert with {InvalidSafeTokenAddress}.
-     * @param cooldownPeriod A uint32 type indicating the minimum period in seconds after which Safe token withdrawal can be performed. Passing zero will revert with the custom error {InvalidTokenAmount}.
+     * @param cooldownPeriod A uint32 type indicating the minimum period in seconds after which Safe token withdrawal can be performed. Passing zero will revert with {InvalidTokenAmount}.
      */
     constructor(address initialOwner, address safeTokenAddress, uint32 cooldownPeriod) Ownable(initialOwner) {
         if (safeTokenAddress == address(0)) revert InvalidSafeTokenAddress();
