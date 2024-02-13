@@ -40,7 +40,7 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
      */
     error InvalidCooldownPeriod();
 
-    /*
+    /**
      * @notice An error that indicates an attempt to transfer Safe tokens out of the contract using recovery mechanism.
      */
     error CannotRecoverSafeToken();
