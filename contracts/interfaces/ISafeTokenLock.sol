@@ -23,7 +23,7 @@ interface ISafeTokenLock {
 
     /**
      * @notice Locks the specified amount of tokens.
-     * @param amount The amount of tokens to lock. The function will revert with custom error InvalidTokenAmount() in case amount is 0.
+     * @param amount The amount of tokens to lock. The function will revert with {InvalidTokenAmount} in case amount is 0.
      * @dev Safe Token Supply = 1 Billion with 18 decimals which is < 2 ** 96
      * Does not allow locking zero tokens.
      * Gas Usage (major): Token Transfer + SLOAD & SSTORE users[msg.sender] + Emit Event
