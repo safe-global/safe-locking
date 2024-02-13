@@ -109,7 +109,7 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
         }
     }
 
-    /*
+    /**
      * @inheritdoc ISafeTokenLock
      */
     function totalBalance(address holder) external view returns (uint96 amount) {
