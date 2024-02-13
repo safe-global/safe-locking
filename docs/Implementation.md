@@ -25,13 +25,13 @@ contract SafeTokenLock is ISafeTokenLock {
   }
 
   address public immutable SAFE_TOKEN; // = Safe Token Address.
-  uint32 public immutable COOLDOWN_PERIOD; // Contains the cooldown period. Default will be 30 days.
+  uint64 public immutable COOLDOWN_PERIOD; // Contains the cooldown period. Default will be 30 days.
   mapping(address => User) public users; // Contains the address => user info struct.
   mapping(uint32 => mapping(address => UnlockInfo)) public unlocks; // Contains the Unlock index => user => Unlock Info struct.
 
-  constructor(address _safeTokenAddress, uint32 _cooldownPeriod) {
-    SAFE_TOKEN = _safeTokenAddress; // Safe Token Contract Address
-    COOLDOWN_PERIOD = _cooldownPeriod; // Cooldown period. Expected value to be passed is 30 days in seconds.
+  constructor(address safeTokenAddress, uint32 cooldownPeriod) {
+    SAFE_TOKEN = safeTokenAddress; // Safe Token Contract Address
+    COOLDOWN_PERIOD = cooldownPeriod; // Cooldown period. Expected value to be passed is 30 days in seconds.
   }
 
   // @inheritdoc ISafeTokenLock
@@ -49,50 +49,32 @@ contract SafeTokenLock is ISafeTokenLock {
   // @inheritdoc ISafeTokenLock
   function unlock(uint96 amount) external returns (uint32 index) {
     /**
-        1. Read the `users[caller]` to `User memory _user`.
-        2. Check if the `_user[caller].locked` >= `amount`
-        3. Assign `UnlockInfo` struct with details of `(amount, timestampOfUnlock`)` to `_user[caller].unlockEnd` in `unlocks`.
-        4. Update the `users[caller]` with (_user[caller].locked - amount, _user[caller].unlocked + amount, _user[caller].unlockStart, _user[caller].unlockEnd++).
+        1. Read the `users[caller]` to `User memory user`.
+        2. Check if the `user[caller].locked` >= `amount`
+        3. Assign `UnlockInfo` struct with details of `(amount, timestampOfUnlock`)` to `user[caller].unlockEnd` in `unlocks`.
+        4. Update the `users[caller]` with (user[caller].locked - amount, user[caller].unlocked + amount, user[caller].unlockStart, user[caller].unlockEnd++).
         5. Emit the Event.
 
-        Gas Usage (major usage only): SLOAD & STORE users[caller] + SSTORE UnlockInfo + Emit Event
-    */
-  }
-
-  // @inheritdoc ISafeTokenLock
-  function withdraw() external returns (uint96 amount) {
-    /**
-        1. Read the `users[caller]` to `User memory _user`.
-        2. Check if `_user[caller].unlocked` > 0. If yes, continue, else revert.
-        3. For i = `_user[caller].unlockStart`, i < `_user[caller].unlockEnd`:
-            3.1 Read `unlocks[i][caller]` to `UnlockInfo memory _unlockInfo`.
-            3.2 Check if `_unlockInfo.unlockedAt > block.timestamp`. If yes, break. Else continue:
-                3.2.1 Clear out unlocks[i][caller] ???
-                3.2.2 Add `_unlockInfo.amount` to `amount`.
-        4. Update `users[caller]` to `(locked as same, unlocked - amount, unlockStart = i, unlockEnd as same)`
-        5. Transfer `amount` to `caller`.
-        6. Emit the event.
-
-        Gas Usage (major usage only): SLOAD users[caller] + n SLOAD unlocks[i][caller] + (optional - only if gas refunds) n Zero assignment SSTORE unlocks[i][caller] + SSTORE users[caller] + Token Transfer + Event Emit
-        where n can be as high as `unlockEnd - unlockStart`.
+        Gas Usage (major usage only): SLOAD & STORE users[caller] + SLOAD COOLDOWN_PERIOD + SSTORE UnlockInfo + Emit Event
     */
   }
 
   // @inheritdoc ISafeTokenLock
   function withdraw(uint32 maxUnlocks) external returns (uint96 amount) {
     /**
-        1. Read the `users[caller]` to `User memory _user`.
-        2. Check if `_user[caller].unlocked` > 0. If yes, continue, else revert.
-        3. For i = `_user[caller].unlockStart`, i < `maxUnlocks`:
-            3.1 Read `unlocks[i][caller]` to `UnlockInfo memory _unlockInfo`.
-            3.2 Check if `_unlockInfo.amount == 0` or `_unlockInfo.unlockedAt > block.timestamp`. If yes, break. Else continue:
-                3.2.1 Clear out unlocks[i][caller] ???
-                3.2.2 Add `_unlockInfo.amount` to `amount`.
-        4. Update `users[caller]` to `(locked as same, unlocked - amount, unlockStart = i, unlockEnd as same)`
-        5. Transfer `amount` to `caller`.
-        6. Emit the event.
+        1. Read the `users[caller]` to `User memory user`.
+        2. Based on the passed maxUnlocks, decide on the `unlockEnd`.
+        3. For i = `user[caller].unlockStart`, i < `unlockEnd`:
+            3.1 Read `unlocks[i][caller]` to `UnlockInfo memory unlockInfo`.
+            3.2 Check if `unlockInfo.unlockedAt > block.timestamp`. If yes, break. Else continue:
+                3.2.1 Add `unlockInfo.amount` to `amount`.
+                3.2.2 Emit the event.
+                3.2.3 Clear out unlocks[i][caller]
+        4. If `amount` > 0:
+          4.1 Update `users[caller]` to `(locked as same, unlocked - amount, unlockStart = i, unlockEnd as same)`
+          4.2 Transfer `amount` to `caller`.
 
-        Gas Usage (major usage only): SLOAD users[caller] + n SLOAD unlocks[i][caller] + (optional - only if gas refunds) n Zero assignment SSTORE unlocks[i][caller] + SSTORE users[caller] + Token Transfer + Event Emit
+        Gas Usage (major usage only): SLOAD users[caller] + n SLOAD unlocks[i][caller] + n Event Emits + n Zero assignment SSTORE unlocks[i][caller] + SSTORE users[caller] + SLOAD SAFE_TOKEN + Token Transfer
         where n can be as high as `unlockEnd - unlockStart`.
     */
   }
