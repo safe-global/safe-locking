@@ -16,7 +16,7 @@ interface ISafeTokenLock {
      */
     error InvalidTokenAmount();
 
-    /*
+    /**
      * @notice Error indicating an attempt to unlock an amount greater than the holder's currently locked tokens.
      */
     error UnlockAmountExceeded();
