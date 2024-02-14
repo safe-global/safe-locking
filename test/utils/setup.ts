@@ -2,7 +2,6 @@ import { deployments, ethers, network } from 'hardhat'
 import { SAFE_TOKEN_ADDRESS } from '../../src/utils/addresses'
 import { HardhatNetworkConfig } from 'hardhat/types'
 
-export const safeTokenTotalSupply = ethers.parseUnits('1', 27) // 1 Billion Safe Token (with 18 decimals)
 export const cooldownPeriod = 60 * 60 * 24 * 30 // 30 days
 
 export const getSafeTokenLock = async () => {
