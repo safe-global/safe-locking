@@ -37,7 +37,7 @@ describe('Lock', function () {
       const { owner } = await setupTests()
       await expect(SafeTokenLock.deploy(owner.address, ZeroAddress, cooldownPeriod)).to.be.revertedWithCustomError(
         SafeTokenLock,
-        'ZeroAddress()',
+        'InvalidSafeTokenAddress()',
       )
     })
 
@@ -45,7 +45,10 @@ describe('Lock', function () {
       const { safeToken, owner } = await setupTests()
 
       const SafeTokenLock = await ethers.getContractFactory('SafeTokenLock')
-      await expect(SafeTokenLock.deploy(owner.address, safeToken, 0)).to.be.revertedWithCustomError(SafeTokenLock, 'ZeroValue()')
+      await expect(SafeTokenLock.deploy(owner.address, safeToken, 0)).to.be.revertedWithCustomError(
+        SafeTokenLock,
+        'InvalidCooldownPeriod()',
+      )
     })
   })
 
@@ -74,7 +77,7 @@ describe('Lock', function () {
       const tokenToLock = 0 // 0 tokens
 
       // Locking zero tokens
-      await expect(safeTokenLock.connect(alice).lock(tokenToLock)).to.be.revertedWithCustomError(safeTokenLock, 'ZeroValue()')
+      await expect(safeTokenLock.connect(alice).lock(tokenToLock)).to.be.revertedWithCustomError(safeTokenLock, 'InvalidTokenAmount()')
     })
 
     it('Should not lock if token transfer is not approved', async function () {
@@ -191,7 +194,7 @@ describe('Lock', function () {
       const tokenToUnlock = 0 // 0 tokens
 
       // Unlocking zero tokens
-      await expect(safeTokenLock.connect(alice).unlock(tokenToUnlock)).to.be.revertedWithCustomError(safeTokenLock, 'ZeroValue()')
+      await expect(safeTokenLock.connect(alice).unlock(tokenToUnlock)).to.be.revertedWithCustomError(safeTokenLock, 'InvalidTokenAmount()')
     })
 
     it('Should not unlock is amount > total locked tokens', async function () {

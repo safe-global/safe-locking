@@ -30,31 +30,51 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
     mapping(address => User) public users; // Contains the address => user info struct.
     mapping(uint32 => mapping(address => UnlockInfo)) public unlocks; // Contains the Unlock id => user => Unlock Info struct.
 
-    error ZeroAddress();
-    error ZeroValue();
-    error UnlockAmountExceeded();
+    /**
+     * @notice Error indicating an attempt to use the zero address as Safe Token address.
+     */
+    error InvalidSafeTokenAddress();
+
+    /**
+     * @notice Error indicating an attempt to use zero as cooldown period value.
+     */
+    error InvalidCooldownPeriod();
+
+    /**
+     * @notice An error that indicates an attempt to transfer Safe tokens out of the contract using recovery mechanism.
+     */
     error CannotRecoverSafeToken();
 
+    /**
+     * @notice Sets the immutables of the contract and the initial owner.
+     * @param initialOwner Initial owner of the contract.
+     * @param safeTokenAddress Address of the Safe token. Passing address(0) will revert with {InvalidSafeTokenAddress}.
+     * @param cooldownPeriod A uint32 type indicating the minimum period in seconds after which Safe token withdrawal can be performed. Passing zero will revert with {InvalidTokenAmount}.
+     */
     constructor(address initialOwner, address safeTokenAddress, uint32 cooldownPeriod) Ownable(initialOwner) {
-        if (safeTokenAddress == address(0)) revert ZeroAddress();
-        if (cooldownPeriod == 0) revert ZeroValue();
+        if (safeTokenAddress == address(0)) revert InvalidSafeTokenAddress();
+        if (cooldownPeriod == 0) revert InvalidCooldownPeriod();
 
         SAFE_TOKEN = IERC20(safeTokenAddress); // Safe Token Contract Address
         COOLDOWN_PERIOD = cooldownPeriod; // Cooldown period. Expected value to be passed is 30 days in seconds.
     }
 
-    // @inheritdoc ISafeTokenLock
+    /**
+     * @inheritdoc ISafeTokenLock
+     */
     function lock(uint96 amount) external {
-        if (amount == 0) revert ZeroValue();
+        if (amount == 0) revert InvalidTokenAmount();
         SAFE_TOKEN.transferFrom(msg.sender, address(this), amount);
 
         users[msg.sender].locked += amount;
         emit Locked(msg.sender, amount);
     }
 
-    // @inheritdoc ISafeTokenLock
+    /**
+     * @inheritdoc ISafeTokenLock
+     */
     function unlock(uint96 amount) external returns (uint32 index) {
-        if (amount == 0) revert ZeroValue();
+        if (amount == 0) revert InvalidTokenAmount();
 
         User memory user = users[msg.sender];
         if (user.locked < amount) revert UnlockAmountExceeded();
@@ -66,7 +86,9 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
         emit Unlocked(msg.sender, index, amount);
     }
 
-    // @inheritdoc ISafeTokenLock
+    /**
+     * @inheritdoc ISafeTokenLock
+     */
     function withdraw(uint32 maxUnlocks) external returns (uint96 amount) {
         User memory user = users[msg.sender];
         uint32 index = user.unlockStart;
@@ -87,12 +109,18 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
         }
     }
 
-    // @inheritdoc ISafeTokenLock
+    /**
+     * @inheritdoc ISafeTokenLock
+     */
     function totalBalance(address holder) external view returns (uint96 amount) {
         return users[holder].locked + users[holder].unlocked;
     }
 
-    // @inheritdoc IRecoverERC20
+    /**
+     * @dev Transfers the specified amount of tokens from the contract to the owner. Only the owner can call this function.
+     * @param token Address of the token to be recovered. The function will revert with {CannotRecoverSafeToken} in case `token` is {SAFE_TOKEN}.
+     * @param amount The amount of tokens to transfer.
+     */
     function recoverERC20(IERC20 token, uint256 amount) external onlyOwner {
         if (token == SAFE_TOKEN) revert CannotRecoverSafeToken();
         token.transfer(msg.sender, amount);
