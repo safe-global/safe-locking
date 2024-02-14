@@ -23,7 +23,7 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
         uint256 unlockEnd;
     }
     struct UnlockInfo {
-        uint256 amount; // For 1 Billion Safe Tokens, this is enough. 10 ** 27 < 2 ** 96
+        uint96 amount; // For 1 Billion Safe Tokens, this is enough. 10 ** 27 < 2 ** 96
         uint64 unlockedAt; // Valid until Year: 2554.
     }
 
