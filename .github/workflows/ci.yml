@@ -26,6 +26,7 @@ jobs:
           cache-dependency-path: package-lock.json
       - run: npm ci
       - run: npm run build && npm run build:ts
+      - run: cp .env.sample .env
       - run: npm run test
 
   coverage:
@@ -39,6 +40,7 @@ jobs:
           cache-dependency-path: package-lock.json
       - run: npm ci
       - run: npm run build && npm run build:ts
+      - run: cp .env.sample .env
       - run: npm run coverage
       - run: npm run coverage:check
       # Uncomment when the repo is ready to be published
