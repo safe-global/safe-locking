@@ -6,7 +6,7 @@
   "scripts": {
     "build": "hardhat compile",
     "build:ts": "npx rimraf dist && tsc",
-    "test": "NODE_URL= hardhat test",
+    "test": "FORK_URL= hardhat test",
     "test:e2e": "hardhat test --grep '^E2E - '",
     "coverage": "hardhat coverage --network hardhat",
     "coverage:check": "istanbul check-coverage ./coverage.json --statements 100 --branches 100 --functions 100 --lines 100",
