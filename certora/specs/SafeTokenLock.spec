@@ -11,7 +11,7 @@ methods {
     function getUser(address userAddress) external returns(SafeTokenLock.User memory) envfree;
     function getUserUnlock(address userAddress, uint32 index) external returns(SafeTokenLock.UnlockInfo memory) envfree;
     function getSafeTokenAddress() external returns(address) envfree;
-
+    function getStartAndEnd(address userAddress) external returns(uint32, uint32) envfree;
     function SafeToken.balanceOf(address) external returns(uint256) envfree;
 
 }
@@ -80,20 +80,81 @@ rule cannotWithdrawMoreThanUnlocked(method f) {
     assert to_mathint(balanceAfter) == balanceBefore + beforeWithdraw;
 }
 
-rule cannotWithdrawBeforeCooldown(method f) {
+rule cannotWithdrawBeforeCooldown() {
     uint32 i;
+    uint32 start;
+    uint32 end;
     env e;
     setup(e);
     uint256 maturesAtTimestamp;
     uint96 amount;
 
+    start, end = getStartAndEnd(e.msg.sender);
+
+    require start == i && end != i;
+
     SafeTokenLock.UnlockInfo unlockInfo = getUserUnlock(e.msg.sender, i);
     maturesAtTimestamp = unlockInfo.unlockedAt;
     amount = unlockInfo.amount;
-    require maturesAtTimestamp < e.block.timestamp && amount > 0;
-    withdraw@withrevert(e, 0);
-    assert lastReverted;
+    require maturesAtTimestamp > e.block.timestamp && amount > 0;
+    uint96 amountWithdrawn;
+
+    require e.msg.value == 0;
+
+    amountWithdrawn = withdraw@withrevert(e, 0);
+    assert !lastReverted && amountWithdrawn == 0;
 }
+
+rule unlockTimeDoesNotChange(method f) {
+    uint32 i;
+    uint32 start;
+    uint32 end;
+    env e;
+    setup(e);
+    mathint maturesAtTimestamp;
+    uint96 amount;
+    address user;
+
+    SafeTokenLock.User user1 = getUser(user);
+
+   // start, end = getStartAndEnd(user);
+
+    require user1.unlockStart == i && user1.unlockEnd != i;
+
+    SafeTokenLock.UnlockInfo unlockInfo = getUserUnlock(user, i);
+
+    // getUser(e, user);
+    calldataarg args;
+   
+    maturesAtTimestamp = unlockInfo.unlockedAt;
+    amount = unlockInfo.amount;
+    require maturesAtTimestamp > to_mathint(e.block.timestamp) && amount > 0;
+    // withdraw@withrevert(e, 0);
+    // assert lastReverted;
+
+    f(e, args);
+
+    SafeTokenLock.UnlockInfo unlockInfo2 = getUserUnlock(user, i);
+    SafeTokenLock.User user2 = getUser(user);
+
+    assert user1.unlockStart == user2.unlockStart;
+    assert maturesAtTimestamp == to_mathint(unlockInfo2.unlockedAt);
+}
+
+// rule contractBalanceCannotDecreaseBeforeCooldown(method f) {
+//     uint32 i;
+//     env e;
+//     setup(e);
+//     calldataarg args;
+//     uint256 maturesAtTimestamp;
+//     uint96 amount;
+
+//     uint256 balanceBefore = safeToken.balanceOf(currentContract);
+//     maturesAtTimestamp = unlockInfo.unlockedAt;
+//     f(e, args);
+//     uint256 balanceAfter = safeToken.balanceOf(currentContract);
+//     assert balanceAfter == balanceBefore;
+// }
 
 // hook to update sum of locked tokens whenever user struct is updated
 hook Sstore SafeTokenLockHarness.users[KEY address user].locked uint96 value (uint96 old_value) STORAGE {
@@ -110,6 +171,12 @@ hook Sstore SafeTokenLockHarness.users[KEY address key].unlocked uint96 value (u
 // hook Sload uint96 value SafeTokenLockHarness.users[KEY address user].locked STORAGE {
 
 // }
+
+// invariant: ghostLocked greater than individual lock 
+// if user.locked > 0 then f(...) user.locked >= before or user.unlocked
+// if user.locked After + (sum of all user.unlocked with ts >(now + 30 days ) ) >= user.locked before
+// sum can decrease only after 30 days are over -> assume ghost variable sum . separate spec: fix in spec file start time, increasing sum. f(...) > startTime
+// balance is greater than all locked and unlocked tokens
 
 invariant contractBalanceGreaterThanSumOfLockedAndUnlocked() 
     to_mathint(safeToken.balanceOf(currentContract)) >= ghostLocked + ghostUnlocked;
