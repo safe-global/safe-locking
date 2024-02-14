@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import { deployments, ethers } from 'hardhat'
 import { time } from '@nomicfoundation/hardhat-network-helpers'
-import { cooldownPeriod, getSafeToken, getSafeTokenLock, safeTokenTotalSupply } from './utils/setup'
+import { cooldownPeriod, getSafeToken, getSafeTokenLock } from './utils/setup'
 import { timestamp, transferToken } from './utils/execution'
 import { ZeroAddress } from 'ethers'
 
@@ -12,7 +12,7 @@ describe('Lock', function () {
 
     const safeToken = await getSafeToken()
     await safeToken.unpause() // Tokens are initially paused in SafeToken
-    await transferToken(safeToken, deployer, tokenCollector, safeTokenTotalSupply)
+    await transferToken(safeToken, deployer, tokenCollector, await safeToken.totalSupply())
 
     const safeTokenLock = await getSafeTokenLock()
     return { safeToken, safeTokenLock, deployer, owner, tokenCollector, alice, bob, carol }
@@ -118,7 +118,7 @@ describe('Lock', function () {
     it('Should be possible to lock all tokens', async function () {
       // This test checks the whether `uint96` is enough to hold all possible locked Safe Token.
       const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
-      const tokenToLock = safeTokenTotalSupply
+      const tokenToLock = await safeToken.totalSupply()
 
       // Transfer tokens to Alice
       await transferToken(safeToken, tokenCollector, alice, tokenToLock)
@@ -259,8 +259,8 @@ describe('Lock', function () {
 
     it('Should be possible to unlock all tokens', async function () {
       const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
-      const tokenToLock = safeTokenTotalSupply
-      const tokenToUnlock = safeTokenTotalSupply
+      const tokenToLock = await safeToken.totalSupply()
+      const tokenToUnlock = await safeToken.totalSupply()
 
       // Transfer tokens to Alice
       await transferToken(safeToken, tokenCollector, alice, tokenToLock)
@@ -813,8 +813,8 @@ describe('Lock', function () {
 
     it('Should be possible to withdraw all tokens', async function () {
       const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
-      const tokenToLock = safeTokenTotalSupply
-      const tokenToUnlock = safeTokenTotalSupply
+      const tokenToLock = await safeToken.totalSupply()
+      const tokenToUnlock = await safeToken.totalSupply()
 
       // Transfer tokens to Alice
       await transferToken(safeToken, tokenCollector, alice, tokenToLock)
