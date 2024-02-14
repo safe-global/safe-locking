@@ -53,6 +53,8 @@ const customNetwork = NODE_URL
     }
   : {}
 
+const forking = NODE_URL ? { forking: { enabled: true, url: NODE_URL } } : {}
+
 const userConfig: HardhatUserConfig = {
   paths: {
     artifacts: 'build/artifacts',
@@ -66,9 +68,7 @@ const userConfig: HardhatUserConfig = {
   },
   networks: {
     hardhat: {
-      blockGasLimit: 100000000,
-      gas: 100000000,
-      gasPrice: 10000000000,
+      ...forking,
       tags: ['test'],
     },
     mainnet: {
