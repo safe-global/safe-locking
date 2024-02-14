@@ -6,15 +6,15 @@ const deploy: DeployFunction = async ({ deployments, getNamedAccounts }) => {
   const { deployer } = await getNamedAccounts()
   const { deploy } = deployments
 
-  if ((network.config as HardhatNetworkConfig).forking?.enabled) {
-    console.log('\tSafeToken deployment skipped for forked network')
-  } else if (network.name == 'hardhat') {
+  if (network.name == 'hardhat' && !(network.config as HardhatNetworkConfig).forking?.enabled) {
     await deploy('SafeToken', {
       from: deployer,
       args: [deployer], // Considering the deployer as the owner as well.
       log: true,
       deterministicDeployment: true,
     })
+  } else {
+    console.log('\tSafeToken deployment Skipped')
   }
 }
 
