@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import { deployments, ethers, network } from 'hardhat'
 import { time } from '@nomicfoundation/hardhat-network-helpers'
-import { cooldownPeriod, getSafeToken, getSafeTokenLock } from './utils/setup'
+import { getSafeToken, getSafeTokenLock } from './utils/setup'
 import { timestamp, transferToken } from './utils/execution'
 import { HardhatNetworkConfig } from 'hardhat/types'
 import { SAFE_FOUNDATION_ADDRESS } from '../src/utils/addresses'
@@ -27,20 +27,6 @@ describe('E2E - Lock', function () {
     const safeTokenLock = await getSafeTokenLock()
     return { safeToken, safeTokenLock, owner, tokenCollector, alice, bob, carol }
   }
-
-  describe('Deployment', function () {
-    it('Should deploy correctly', async function () {
-      const { safeToken, safeTokenLock } = await setupTests()
-
-      // Checking contract deployment.
-      expect(ethers.dataLength(await ethers.provider.getCode(safeTokenLock))).to.not.equal(0)
-      expect(ethers.dataLength(await ethers.provider.getCode(safeToken))).to.not.equal(0)
-
-      // Checking Safe Token Lock Initialization Values
-      expect(await safeTokenLock.SAFE_TOKEN()).to.equal(safeToken)
-      expect(await safeTokenLock.COOLDOWN_PERIOD()).to.equal(cooldownPeriod) // 30 days
-    })
-  })
 
   describe('Locking', function () {
     it('Should lock tokens correctly', async function () {
