@@ -4,7 +4,7 @@ import { time } from '@nomicfoundation/hardhat-network-helpers'
 import { cooldownPeriod, getSafeToken, getSafeTokenLock, safeTokenTotalSupply } from './utils/setup'
 import { timestamp, transferToken } from './utils/execution'
 import { ZeroAddress } from 'ethers'
-import { safeTokenOwnerAddress } from '../src/utils/addresses'
+import { SAFE_FOUNDATION_ADDRESS } from '../src/utils/addresses'
 
 describe('Lock', function () {
   const setupTests = deployments.createFixture(async ({ deployments }) => {
@@ -953,15 +953,15 @@ describe('Lock', function () {
 
     it('Should not allow Safe token recovery', async () => {
       const { safeTokenLock, safeToken, tokenCollector } = await setupTests()
-      const owner = await ethers.getImpersonatedSigner(safeTokenOwnerAddress)
-      await tokenCollector.sendTransaction({ to: safeTokenOwnerAddress, value: ethers.parseUnits('1', 18) })
+      const owner = await ethers.getImpersonatedSigner(SAFE_FOUNDATION_ADDRESS)
+      await tokenCollector.sendTransaction({ to: SAFE_FOUNDATION_ADDRESS, value: ethers.parseUnits('1', 18) })
       expect(safeTokenLock.connect(owner).recoverERC20(safeToken, 0)).to.be.revertedWithCustomError(safeTokenLock, 'CannotRecoverSafeToken')
     })
 
     it('Should allow ERC20 recovery other than Safe token', async () => {
       const { safeTokenLock, safeToken, tokenCollector } = await setupTests()
-      const owner = await ethers.getImpersonatedSigner(safeTokenOwnerAddress)
-      await tokenCollector.sendTransaction({ to: safeTokenOwnerAddress, value: ethers.parseUnits('1', 18) })
+      const owner = await ethers.getImpersonatedSigner(SAFE_FOUNDATION_ADDRESS)
+      await tokenCollector.sendTransaction({ to: SAFE_FOUNDATION_ADDRESS, value: ethers.parseUnits('1', 18) })
       const erc20 = await (await ethers.getContractFactory('TestERC20')).deploy('TEST', 'TEST')
 
       const amount = 1n

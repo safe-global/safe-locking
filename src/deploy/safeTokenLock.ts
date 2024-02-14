@@ -1,6 +1,6 @@
 import { DeployFunction } from 'hardhat-deploy/types'
 import { cooldownPeriod } from '../../test/utils/setup'
-import { safeTokenAddress } from '../utils/addresses'
+import { SAFE_TOKEN_ADDRESS } from '../utils/addresses'
 import { network } from 'hardhat'
 import { HardhatNetworkConfig } from 'hardhat/types'
 
@@ -19,7 +19,7 @@ const deploy: DeployFunction = async ({ deployments, getNamedAccounts }) => {
   } else {
     await deploy('SafeTokenLock', {
       from: deployer,
-      args: [owner, safeTokenAddress, cooldownPeriod],
+      args: [owner, SAFE_TOKEN_ADDRESS, cooldownPeriod],
       log: true,
       deterministicDeployment: true,
     })

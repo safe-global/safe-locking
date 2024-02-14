@@ -1,5 +1,5 @@
 import { deployments, ethers, network } from 'hardhat'
-import { safeTokenAddress } from '../../src/utils/addresses'
+import { SAFE_TOKEN_ADDRESS } from '../../src/utils/addresses'
 import { HardhatNetworkConfig } from 'hardhat/types'
 
 export const safeTokenTotalSupply = ethers.parseUnits('1', 27) // 1 Billion Safe Token (with 18 decimals)
@@ -13,7 +13,7 @@ export const getSafeTokenLock = async () => {
 export const getSafeToken = async () => {
   let SafeTokenDeploymentAddress
   if ((network.config as HardhatNetworkConfig).forking?.enabled) {
-    SafeTokenDeploymentAddress = safeTokenAddress
+    SafeTokenDeploymentAddress = SAFE_TOKEN_ADDRESS
   } else {
     SafeTokenDeploymentAddress = (await deployments.get('SafeToken')).address
   }

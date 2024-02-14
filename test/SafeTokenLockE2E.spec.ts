@@ -4,7 +4,7 @@ import { time } from '@nomicfoundation/hardhat-network-helpers'
 import { cooldownPeriod, getSafeToken, getSafeTokenLock } from './utils/setup'
 import { timestamp, transferToken } from './utils/execution'
 import { HardhatNetworkConfig } from 'hardhat/types'
-import { safeTokenOwnerAddress } from '../src/utils/addresses'
+import { SAFE_FOUNDATION_ADDRESS } from '../src/utils/addresses'
 
 describe('E2E - Lock', function () {
   before(function () {
@@ -16,12 +16,12 @@ describe('E2E - Lock', function () {
   const setupTests = async () => {
     await deployments.fixture()
     const [tokenCollector, alice, bob, carol] = await ethers.getSigners()
-    const owner = await ethers.getImpersonatedSigner(safeTokenOwnerAddress)
-    await tokenCollector.sendTransaction({ to: safeTokenOwnerAddress, value: ethers.parseUnits('10', 18) })
+    const owner = await ethers.getImpersonatedSigner(SAFE_FOUNDATION_ADDRESS)
+    await tokenCollector.sendTransaction({ to: SAFE_FOUNDATION_ADDRESS, value: ethers.parseUnits('10', 18) })
 
     const safeToken = await getSafeToken()
     await safeToken.connect(owner).unpause() // Tokens are initially paused in SafeToken
-    const safeTokenOwnerBalance = await safeToken.balanceOf(safeTokenOwnerAddress)
+    const safeTokenOwnerBalance = await safeToken.balanceOf(SAFE_FOUNDATION_ADDRESS)
     await transferToken(safeToken, owner, tokenCollector, safeTokenOwnerBalance)
 
     const safeTokenLock = await getSafeTokenLock()
