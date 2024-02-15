@@ -7,7 +7,7 @@
     "build": "hardhat compile",
     "build:ts": "npx rimraf dist && tsc",
     "test": "hardhat test",
-    "test:e2e": "HARDHAT_FORK=1 hardhat test --grep '^General - '",
+    "test:e2e": "HARDHAT_FORK=1 hardhat test",
     "test:all": "npm run test && npm run test:e2e",
     "coverage": "hardhat coverage --network hardhat",
     "coverage:check": "istanbul check-coverage ./coverage.json --statements 100 --branches 100 --functions 100 --lines 100",

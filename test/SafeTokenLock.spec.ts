@@ -125,6 +125,26 @@ describe('General - Lock', function () {
       expect(await safeTokenLock.totalBalance(alice)).to.equal(totalTokensToLock)
     })
 
+    it('Should be possible to lock all tokens', async function () {
+      if ((network.config as HardhatNetworkConfig).forking?.enabled) {
+        this.skip()
+      }
+      // This test checks the whether `uint96` is enough to hold all possible locked Safe Token.
+      const { safeToken, safeTokenTotalSupply, safeTokenLock, tokenCollector, alice } = await setupTests()
+      const tokenToLock = safeTokenTotalSupply
+
+      // Transfer tokens to Alice
+      await transferToken(safeToken, tokenCollector, alice, tokenToLock)
+
+      // Locking tokens
+      await safeToken.connect(alice).approve(safeTokenLock, tokenToLock)
+      await safeTokenLock.connect(alice).lock(tokenToLock)
+
+      // Checking Locked Token details
+      expect((await safeTokenLock.users(alice)).locked).to.equal(tokenToLock)
+      expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToLock)
+    })
+
     it('Should not lock tokens without transferring token', async function () {
       const { safeToken, safeTokenLock, alice } = await setupTests()
       const tokenToLock = ethers.parseUnits('100', 18)
@@ -248,6 +268,39 @@ describe('General - Lock', function () {
       expect((await safeTokenLock.users(alice)).unlockStart).to.equal(0)
       expect((await safeTokenLock.users(alice)).unlockEnd).to.equal(index)
       expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToLock)
+    })
+
+    it('Should be possible to unlock all tokens', async function () {
+      if ((network.config as HardhatNetworkConfig).forking?.enabled) {
+        this.skip()
+      }
+      const { safeToken, safeTokenTotalSupply, safeTokenLock, tokenCollector, alice } = await setupTests()
+      const tokenToLock = safeTokenTotalSupply
+      const tokenToUnlock = safeTokenTotalSupply
+
+      // Transfer tokens to Alice
+      await transferToken(safeToken, tokenCollector, alice, tokenToLock)
+
+      // Locking tokens
+      await safeToken.connect(alice).approve(safeTokenLock, tokenToLock)
+      await safeTokenLock.connect(alice).lock(tokenToLock)
+
+      // Unlocking tokens
+      await safeTokenLock.connect(alice).unlock(tokenToUnlock)
+
+      // Calculating expected unlockedAt timestamp
+      const currentTimestamp = BigInt(await timestamp())
+      const cooldownPeriod = await safeTokenLock.COOLDOWN_PERIOD()
+      const expectedUnlockedAt = currentTimestamp + cooldownPeriod
+
+      // Checking Locked & Unlocked Token details
+      expect((await safeTokenLock.users(alice)).locked).to.equal(0)
+      expect((await safeTokenLock.users(alice)).unlocked).to.equal(tokenToUnlock)
+      expect((await safeTokenLock.users(alice)).unlockStart).to.equal(0)
+      expect((await safeTokenLock.users(alice)).unlockEnd).to.equal(1)
+      expect((await safeTokenLock.unlocks(0, alice)).amount).to.equal(tokenToUnlock)
+      expect((await safeTokenLock.unlocks(0, alice)).unlockedAt).to.equal(expectedUnlockedAt)
+      expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToUnlock)
     })
 
     it('Should not reduce the total token before & after unlock', async function () {
@@ -772,6 +825,49 @@ describe('General - Lock', function () {
       for (; index < 10; index++) {
         expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(tokenToUnlock)
       }
+    })
+
+    it('Should be possible to withdraw all tokens', async function () {
+      if ((network.config as HardhatNetworkConfig).forking?.enabled) {
+        this.skip()
+      }
+      const { safeToken, safeTokenTotalSupply, safeTokenLock, tokenCollector, alice } = await setupTests()
+      const tokenToLock = safeTokenTotalSupply
+      const tokenToUnlock = safeTokenTotalSupply
+
+      // Transfer tokens to Alice
+      await transferToken(safeToken, tokenCollector, alice, tokenToLock)
+
+      // Locking tokens
+      await safeToken.connect(alice).approve(safeTokenLock, tokenToLock)
+      await safeTokenLock.connect(alice).lock(tokenToLock)
+
+      // Unlocking tokens
+      await safeTokenLock.connect(alice).unlock(tokenToUnlock)
+
+      // Getting unlocked at timestamp and increasing timestamp
+      const unlockedAt = (await safeTokenLock.unlocks(0, alice)).unlockedAt
+      await time.increaseTo(unlockedAt)
+
+      // Withdrawing tokens
+      const aliceTokenBalanceBefore = await safeToken.balanceOf(alice)
+      const aliceUnlockContractBalanceBefore = (await safeTokenLock.users(alice)).unlocked
+      const aliceUnlockStartBefore = (await safeTokenLock.users(alice)).unlockStart
+      const aliceUnlockEndBefore = (await safeTokenLock.users(alice)).unlockEnd
+      await safeTokenLock.connect(alice).withdraw(1)
+      const aliceTokenBalanceAfter = await safeToken.balanceOf(alice)
+      const aliceUnlockContractBalanceAfter = (await safeTokenLock.users(alice)).unlocked
+      const aliceUnlockStartAfter = (await safeTokenLock.users(alice)).unlockStart
+      const aliceUnlockEndAfter = (await safeTokenLock.users(alice)).unlockEnd
+
+      // Checking Token Balance & Unlocked Token details
+      expect(aliceTokenBalanceAfter).to.equal(aliceTokenBalanceBefore + tokenToUnlock)
+      expect(aliceUnlockContractBalanceAfter).to.equal(aliceUnlockContractBalanceBefore - tokenToUnlock)
+      expect(aliceUnlockStartAfter).to.equal(aliceUnlockStartBefore + 1n)
+      expect(aliceUnlockEndAfter).to.equal(aliceUnlockEndBefore)
+      expect((await safeTokenLock.unlocks(0, alice)).amount).to.equal(0)
+      expect((await safeTokenLock.unlocks(0, alice)).unlockedAt).to.equal(0)
+      expect(await safeTokenLock.totalBalance(alice)).to.equal(0)
     })
 
     it('Should emit Withdrawn event when tokens are withdrawn correctly', async function () {
