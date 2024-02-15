@@ -6,7 +6,7 @@ import { timestamp, transferToken } from './utils/execution'
 import { ZeroAddress } from 'ethers'
 import { HardhatNetworkConfig } from 'hardhat/types'
 
-describe('General - Lock', function () {
+describe('Lock', function () {
   const setupTests = deployments.createFixture(async ({ deployments }) => {
     await deployments.fixture()
     let safeTokenToTransfer
