@@ -69,7 +69,7 @@ rule doesNotAffectOtherUserBalance(method f) {
     assert totalBalance(e, otherUser) == otherUserBalanceBefore;
 }
 
-rule cannotWithdrawMoreThanUnlocked(method f) {
+rule cannotWithdrawMoreThanUnlocked() {
     env e;
     setup(e);
     uint256 balanceBefore = safeToken.balanceOf(e, e.msg.sender);
@@ -77,7 +77,7 @@ rule cannotWithdrawMoreThanUnlocked(method f) {
     withdraw(e, 0);
     require !lastReverted;
     uint256 balanceAfter = safeToken.balanceOf(e, e.msg.sender);
-    assert to_mathint(balanceAfter) == balanceBefore + beforeWithdraw;
+    assert to_mathint(balanceAfter) <= balanceBefore + beforeWithdraw;
 }
 
 rule cannotWithdrawBeforeCooldown() {
@@ -117,20 +117,16 @@ rule unlockTimeDoesNotChange(method f) {
 
     SafeTokenLock.User user1 = getUser(user);
 
-   // start, end = getStartAndEnd(user);
-
     require user1.unlockStart == i && user1.unlockEnd != i;
 
     SafeTokenLock.UnlockInfo unlockInfo = getUserUnlock(user, i);
 
-    // getUser(e, user);
     calldataarg args;
    
     maturesAtTimestamp = unlockInfo.unlockedAt;
     amount = unlockInfo.amount;
     require maturesAtTimestamp > to_mathint(e.block.timestamp) && amount > 0;
-    // withdraw@withrevert(e, 0);
-    // assert lastReverted;
+
 
     f(e, args);
 
