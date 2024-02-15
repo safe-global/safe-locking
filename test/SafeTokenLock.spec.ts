@@ -1,10 +1,10 @@
 import { expect } from 'chai'
-import { deployments, ethers, getNamedAccounts, network } from 'hardhat'
+import { deployments, ethers, getNamedAccounts } from 'hardhat'
 import { time } from '@nomicfoundation/hardhat-network-helpers'
 import { cooldownPeriod, getSafeToken, getSafeTokenLock } from './utils/setup'
 import { timestamp, transferToken } from './utils/execution'
 import { ZeroAddress } from 'ethers'
-import { HardhatNetworkConfig } from 'hardhat/types'
+import { isForkedNetwork } from '../src/utils/e2e'
 
 describe('Lock', function () {
   const setupTests = deployments.createFixture(async ({ deployments }) => {
@@ -14,7 +14,7 @@ describe('Lock', function () {
     const owner = await ethers.getImpersonatedSigner(ownerAddress)
 
     const safeToken = await getSafeToken()
-    if ((network.config as HardhatNetworkConfig).forking?.enabled) {
+    if (isForkedNetwork()) {
       safeTokenToTransfer = await safeToken.balanceOf(owner)
     } else {
       safeTokenToTransfer = await safeToken.totalSupply()
@@ -126,7 +126,7 @@ describe('Lock', function () {
     })
 
     it('Should be possible to lock all tokens', async function () {
-      if ((network.config as HardhatNetworkConfig).forking?.enabled) {
+      if (isForkedNetwork()) {
         this.skip()
       }
       // This test checks the whether `uint96` is enough to hold all possible locked Safe Token.
@@ -271,7 +271,7 @@ describe('Lock', function () {
     })
 
     it('Should be possible to unlock all tokens', async function () {
-      if ((network.config as HardhatNetworkConfig).forking?.enabled) {
+      if (isForkedNetwork()) {
         this.skip()
       }
       const { safeToken, safeTokenTotalSupply, safeTokenLock, tokenCollector, alice } = await setupTests()
@@ -828,7 +828,7 @@ describe('Lock', function () {
     })
 
     it('Should be possible to withdraw all tokens', async function () {
-      if ((network.config as HardhatNetworkConfig).forking?.enabled) {
+      if (isForkedNetwork()) {
         this.skip()
       }
       const { safeToken, safeTokenTotalSupply, safeTokenLock, tokenCollector, alice } = await setupTests()
