@@ -1,14 +1,14 @@
 import { expect } from 'chai'
-import { deployments, ethers } from 'hardhat'
+import { deployments, ethers, getNamedAccounts } from 'hardhat'
 import { time } from '@nomicfoundation/hardhat-network-helpers'
 import { getSafeToken, getSafeTokenLock } from './utils/setup'
 import { timestamp, transferToken } from './utils/execution'
-import { SAFE_FOUNDATION_ADDRESS } from '../src/utils/addresses'
 
 describe('Total Supply - Lock', function () {
   const setupTests = deployments.createFixture(async ({ deployments }) => {
     await deployments.fixture()
-    const owner = await ethers.getImpersonatedSigner(SAFE_FOUNDATION_ADDRESS)
+    const { owner: ownerAddress } = await getNamedAccounts()
+    const owner = await ethers.getImpersonatedSigner(ownerAddress)
     const [deployer, , tokenCollector, alice, bob, carol] = await ethers.getSigners()
     await tokenCollector.sendTransaction({ to: owner, value: ethers.parseUnits('10', 18) })
 

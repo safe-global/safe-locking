@@ -1,17 +1,17 @@
 import { expect } from 'chai'
-import { deployments, ethers, network } from 'hardhat'
+import { deployments, ethers, getNamedAccounts, network } from 'hardhat'
 import { time } from '@nomicfoundation/hardhat-network-helpers'
 import { cooldownPeriod, getSafeToken, getSafeTokenLock } from './utils/setup'
 import { timestamp, transferToken } from './utils/execution'
 import { ZeroAddress } from 'ethers'
-import { SAFE_FOUNDATION_ADDRESS } from '../src/utils/addresses'
 import { HardhatNetworkConfig } from 'hardhat/types'
 
 describe('General - Lock', function () {
   const setupTests = deployments.createFixture(async ({ deployments }) => {
     await deployments.fixture()
     let safeTokenToTransfer
-    const owner = await ethers.getImpersonatedSigner(SAFE_FOUNDATION_ADDRESS)
+    const { owner: ownerAddress } = await getNamedAccounts()
+    const owner = await ethers.getImpersonatedSigner(ownerAddress)
 
     const safeToken = await getSafeToken()
     if ((network.config as HardhatNetworkConfig).forking?.enabled) {
@@ -877,16 +877,12 @@ describe('General - Lock', function () {
     })
 
     it('Should not allow Safe token recovery', async () => {
-      const { safeTokenLock, safeToken, tokenCollector } = await setupTests()
-      const owner = await ethers.getImpersonatedSigner(SAFE_FOUNDATION_ADDRESS)
-      await tokenCollector.sendTransaction({ to: SAFE_FOUNDATION_ADDRESS, value: ethers.parseUnits('1', 18) })
+      const { safeTokenLock, safeToken, owner } = await setupTests()
       expect(safeTokenLock.connect(owner).recoverERC20(safeToken, 0)).to.be.revertedWithCustomError(safeTokenLock, 'CannotRecoverSafeToken')
     })
 
     it('Should allow ERC20 recovery other than Safe token', async () => {
-      const { safeTokenLock, safeToken, tokenCollector } = await setupTests()
-      const owner = await ethers.getImpersonatedSigner(SAFE_FOUNDATION_ADDRESS)
-      await tokenCollector.sendTransaction({ to: SAFE_FOUNDATION_ADDRESS, value: ethers.parseUnits('1', 18) })
+      const { safeTokenLock, safeToken, owner } = await setupTests()
       const erc20 = await (await ethers.getContractFactory('TestERC20')).deploy('TEST', 'TEST')
 
       const amount = 1n
