@@ -973,12 +973,12 @@ describe('Lock', function () {
     })
 
     it('Should not allow Safe token recovery', async () => {
-      const { safeTokenLock, safeToken, owner } = await setupTests()
+      const { safeToken, safeTokenLock, owner } = await setupTests()
       expect(safeTokenLock.connect(owner).recoverERC20(safeToken, 0)).to.be.revertedWithCustomError(safeTokenLock, 'CannotRecoverSafeToken')
     })
 
     it('Should allow ERC20 recovery other than Safe token', async () => {
-      const { safeTokenLock, safeToken, owner } = await setupTests()
+      const { safeToken, safeTokenLock, owner } = await setupTests()
       const erc20 = await (await ethers.getContractFactory('TestERC20')).deploy('TEST', 'TEST')
 
       const amount = 1n
