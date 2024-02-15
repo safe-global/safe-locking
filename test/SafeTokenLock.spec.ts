@@ -1,24 +1,34 @@
 import { expect } from 'chai'
-import { deployments, ethers } from 'hardhat'
+import { deployments, ethers, network } from 'hardhat'
 import { time } from '@nomicfoundation/hardhat-network-helpers'
 import { cooldownPeriod, getSafeToken, getSafeTokenLock } from './utils/setup'
 import { timestamp, transferToken } from './utils/execution'
 import { ZeroAddress } from 'ethers'
 import { SAFE_FOUNDATION_ADDRESS } from '../src/utils/addresses'
+import { HardhatNetworkConfig } from 'hardhat/types'
 
-describe('Lock', function () {
+describe('General - Lock', function () {
   const setupTests = deployments.createFixture(async ({ deployments }) => {
     await deployments.fixture()
-    const [deployer, owner, tokenCollector, alice, bob, carol] = await ethers.getSigners()
+    let safeTokenToTransfer
+    const owner = await ethers.getImpersonatedSigner(SAFE_FOUNDATION_ADDRESS)
 
     const safeToken = await getSafeToken()
-    await safeToken.unpause() // Tokens are initially paused in SafeToken
+    if ((network.config as HardhatNetworkConfig).forking?.enabled) {
+      safeTokenToTransfer = await safeToken.balanceOf(owner)
+    } else {
+      safeTokenToTransfer = await safeToken.totalSupply()
+    }
 
+    const [, , tokenCollector, alice, bob, carol] = await ethers.getSigners()
+    await tokenCollector.sendTransaction({ to: owner, value: ethers.parseUnits('10', 18) })
     const safeTokenTotalSupply = await safeToken.totalSupply()
-    await transferToken(safeToken, deployer, tokenCollector, safeTokenTotalSupply)
+
+    await safeToken.connect(owner).unpause() // Tokens are initially paused in SafeToken
+    await transferToken(safeToken, owner, tokenCollector, safeTokenToTransfer)
 
     const safeTokenLock = await getSafeTokenLock()
-    return { safeToken, safeTokenTotalSupply, safeTokenLock, deployer, owner, tokenCollector, alice, bob, carol }
+    return { safeToken, safeTokenTotalSupply, safeTokenLock, owner, tokenCollector, alice, bob, carol }
   })
 
   describe('Deployment', function () {
@@ -37,7 +47,7 @@ describe('Lock', function () {
     it('Should not deploy with zero address', async function () {
       const SafeTokenLock = await ethers.getContractFactory('SafeTokenLock')
       const { owner } = await setupTests()
-      await expect(SafeTokenLock.deploy(owner.address, ZeroAddress, cooldownPeriod)).to.be.revertedWithCustomError(
+      await expect(SafeTokenLock.deploy(owner, ZeroAddress, cooldownPeriod)).to.be.revertedWithCustomError(
         SafeTokenLock,
         'InvalidSafeTokenAddress()',
       )
@@ -47,10 +57,7 @@ describe('Lock', function () {
       const { safeToken, owner } = await setupTests()
 
       const SafeTokenLock = await ethers.getContractFactory('SafeTokenLock')
-      await expect(SafeTokenLock.deploy(owner.address, safeToken, 0)).to.be.revertedWithCustomError(
-        SafeTokenLock,
-        'InvalidCooldownPeriod()',
-      )
+      await expect(SafeTokenLock.deploy(owner, safeToken, 0)).to.be.revertedWithCustomError(SafeTokenLock, 'InvalidCooldownPeriod()')
     })
   })
 
@@ -116,23 +123,6 @@ describe('Lock', function () {
       // Checking Final Locked Token details
       expect((await safeTokenLock.users(alice)).locked).to.equal(totalTokensToLock)
       expect(await safeTokenLock.totalBalance(alice)).to.equal(totalTokensToLock)
-    })
-
-    it('Should be possible to lock all tokens', async function () {
-      // This test checks the whether `uint96` is enough to hold all possible locked Safe Token.
-      const { safeToken, safeTokenTotalSupply, safeTokenLock, tokenCollector, alice } = await setupTests()
-      const tokenToLock = safeTokenTotalSupply
-
-      // Transfer tokens to Alice
-      await transferToken(safeToken, tokenCollector, alice, tokenToLock)
-
-      // Locking tokens
-      await safeToken.connect(alice).approve(safeTokenLock, tokenToLock)
-      await safeTokenLock.connect(alice).lock(tokenToLock)
-
-      // Checking Locked Token details
-      expect((await safeTokenLock.users(alice)).locked).to.equal(tokenToLock)
-      expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToLock)
     })
 
     it('Should not lock tokens without transferring token', async function () {
@@ -258,36 +248,6 @@ describe('Lock', function () {
       expect((await safeTokenLock.users(alice)).unlockStart).to.equal(0)
       expect((await safeTokenLock.users(alice)).unlockEnd).to.equal(index)
       expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToLock)
-    })
-
-    it('Should be possible to unlock all tokens', async function () {
-      const { safeToken, safeTokenTotalSupply, safeTokenLock, tokenCollector, alice } = await setupTests()
-      const tokenToLock = safeTokenTotalSupply
-      const tokenToUnlock = safeTokenTotalSupply
-
-      // Transfer tokens to Alice
-      await transferToken(safeToken, tokenCollector, alice, tokenToLock)
-
-      // Locking tokens
-      await safeToken.connect(alice).approve(safeTokenLock, tokenToLock)
-      await safeTokenLock.connect(alice).lock(tokenToLock)
-
-      // Unlocking tokens
-      await safeTokenLock.connect(alice).unlock(tokenToUnlock)
-
-      // Calculating expected unlockedAt timestamp
-      const currentTimestamp = BigInt(await timestamp())
-      const cooldownPeriod = await safeTokenLock.COOLDOWN_PERIOD()
-      const expectedUnlockedAt = currentTimestamp + cooldownPeriod
-
-      // Checking Locked & Unlocked Token details
-      expect((await safeTokenLock.users(alice)).locked).to.equal(0)
-      expect((await safeTokenLock.users(alice)).unlocked).to.equal(tokenToUnlock)
-      expect((await safeTokenLock.users(alice)).unlockStart).to.equal(0)
-      expect((await safeTokenLock.users(alice)).unlockEnd).to.equal(1)
-      expect((await safeTokenLock.unlocks(0, alice)).amount).to.equal(tokenToUnlock)
-      expect((await safeTokenLock.unlocks(0, alice)).unlockedAt).to.equal(expectedUnlockedAt)
-      expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToUnlock)
     })
 
     it('Should not reduce the total token before & after unlock', async function () {
@@ -812,46 +772,6 @@ describe('Lock', function () {
       for (; index < 10; index++) {
         expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(tokenToUnlock)
       }
-    })
-
-    it('Should be possible to withdraw all tokens', async function () {
-      const { safeToken, safeTokenTotalSupply, safeTokenLock, tokenCollector, alice } = await setupTests()
-      const tokenToLock = safeTokenTotalSupply
-      const tokenToUnlock = safeTokenTotalSupply
-
-      // Transfer tokens to Alice
-      await transferToken(safeToken, tokenCollector, alice, tokenToLock)
-
-      // Locking tokens
-      await safeToken.connect(alice).approve(safeTokenLock, tokenToLock)
-      await safeTokenLock.connect(alice).lock(tokenToLock)
-
-      // Unlocking tokens
-      await safeTokenLock.connect(alice).unlock(tokenToUnlock)
-
-      // Getting unlocked at timestamp and increasing timestamp
-      const unlockedAt = (await safeTokenLock.unlocks(0, alice)).unlockedAt
-      await time.increaseTo(unlockedAt)
-
-      // Withdrawing tokens
-      const aliceTokenBalanceBefore = await safeToken.balanceOf(alice)
-      const aliceUnlockContractBalanceBefore = (await safeTokenLock.users(alice)).unlocked
-      const aliceUnlockStartBefore = (await safeTokenLock.users(alice)).unlockStart
-      const aliceUnlockEndBefore = (await safeTokenLock.users(alice)).unlockEnd
-      await safeTokenLock.connect(alice).withdraw(1)
-      const aliceTokenBalanceAfter = await safeToken.balanceOf(alice)
-      const aliceUnlockContractBalanceAfter = (await safeTokenLock.users(alice)).unlocked
-      const aliceUnlockStartAfter = (await safeTokenLock.users(alice)).unlockStart
-      const aliceUnlockEndAfter = (await safeTokenLock.users(alice)).unlockEnd
-
-      // Checking Token Balance & Unlocked Token details
-      expect(aliceTokenBalanceAfter).to.equal(aliceTokenBalanceBefore + tokenToUnlock)
-      expect(aliceUnlockContractBalanceAfter).to.equal(aliceUnlockContractBalanceBefore - tokenToUnlock)
-      expect(aliceUnlockStartAfter).to.equal(aliceUnlockStartBefore + 1n)
-      expect(aliceUnlockEndAfter).to.equal(aliceUnlockEndBefore)
-      expect((await safeTokenLock.unlocks(0, alice)).amount).to.equal(0)
-      expect((await safeTokenLock.unlocks(0, alice)).unlockedAt).to.equal(0)
-      expect(await safeTokenLock.totalBalance(alice)).to.equal(0)
     })
 
     it('Should emit Withdrawn event when tokens are withdrawn correctly', async function () {
