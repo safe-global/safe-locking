@@ -12,8 +12,7 @@ const argv = yargs(process.argv.slice(2))
 
 // Load environment variables.
 dotenv.config()
-const { CUSTOM_NODE_URL, HARDHAT_FORK_URL, INFURA_KEY, MNEMONIC, ETHERSCAN_API_KEY, PK, SOLIDITY_VERSION, SOLIDITY_SETTINGS, OWNER } =
-  process.env
+const { CUSTOM_NODE_URL, INFURA_KEY, MNEMONIC, ETHERSCAN_API_KEY, PK, SOLIDITY_VERSION, SOLIDITY_SETTINGS, OWNER } = process.env
 
 const DEFAULT_MNEMONIC = 'candy maple cake sugar pudding cream honey rich smooth crumble sweet treat'
 
@@ -54,7 +53,7 @@ const customNetwork = CUSTOM_NODE_URL
     }
   : {}
 
-const forking = HARDHAT_FORK_URL ? { forking: { enabled: true, url: HARDHAT_FORK_URL } } : {}
+const forking = process.env['HARDHAT_FORK'] ? { forking: { enabled: true, url: `https://mainnet.infura.io/v3/${INFURA_KEY}` } } : {}
 
 const userConfig: HardhatUserConfig = {
   paths: {
