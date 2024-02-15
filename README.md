@@ -118,7 +118,6 @@ NOTE: To run E2E test, `INFURA_KEY` in `.env` with the appropriate value to fork
 #### All tests
 
 ```bash
-npm run build
 npm run test:all
 ```
 
