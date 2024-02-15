@@ -1,23 +1,34 @@
 import { expect } from 'chai'
-import { deployments, ethers } from 'hardhat'
+import { deployments, ethers, getNamedAccounts } from 'hardhat'
 import { time } from '@nomicfoundation/hardhat-network-helpers'
 import { cooldownPeriod, getSafeToken, getSafeTokenLock } from './utils/setup'
 import { timestamp, transferToken } from './utils/execution'
 import { ZeroAddress } from 'ethers'
+import { isForkedNetwork } from '../src/utils/e2e'
 
 describe('Lock', function () {
   const setupTests = deployments.createFixture(async ({ deployments }) => {
     await deployments.fixture()
-    const [deployer, owner, tokenCollector, alice, bob, carol] = await ethers.getSigners()
+    let safeTokenToTransfer
+    const { owner: ownerAddress } = await getNamedAccounts()
+    const owner = await ethers.getImpersonatedSigner(ownerAddress)
 
     const safeToken = await getSafeToken()
-    await safeToken.unpause() // Tokens are initially paused in SafeToken
+    if (isForkedNetwork()) {
+      safeTokenToTransfer = await safeToken.balanceOf(owner)
+    } else {
+      safeTokenToTransfer = await safeToken.totalSupply()
+    }
 
+    const [, , tokenCollector, alice, bob, carol] = await ethers.getSigners()
+    await tokenCollector.sendTransaction({ to: owner, value: ethers.parseUnits('10', 18) })
     const safeTokenTotalSupply = await safeToken.totalSupply()
-    await transferToken(safeToken, deployer, tokenCollector, safeTokenTotalSupply)
+
+    await safeToken.connect(owner).unpause() // Tokens are initially paused in SafeToken
+    await transferToken(safeToken, owner, tokenCollector, safeTokenToTransfer)
 
     const safeTokenLock = await getSafeTokenLock()
-    return { safeToken, safeTokenTotalSupply, safeTokenLock, deployer, owner, tokenCollector, alice, bob, carol }
+    return { safeToken, safeTokenTotalSupply, safeTokenLock, owner, tokenCollector, alice, bob, carol }
   })
 
   describe('Deployment', function () {
@@ -36,7 +47,7 @@ describe('Lock', function () {
     it('Should not deploy with zero address', async function () {
       const SafeTokenLock = await ethers.getContractFactory('SafeTokenLock')
       const { owner } = await setupTests()
-      await expect(SafeTokenLock.deploy(owner.address, ZeroAddress, cooldownPeriod)).to.be.revertedWithCustomError(
+      await expect(SafeTokenLock.deploy(owner, ZeroAddress, cooldownPeriod)).to.be.revertedWithCustomError(
         SafeTokenLock,
         'InvalidSafeTokenAddress()',
       )
@@ -46,10 +57,7 @@ describe('Lock', function () {
       const { safeToken, owner } = await setupTests()
 
       const SafeTokenLock = await ethers.getContractFactory('SafeTokenLock')
-      await expect(SafeTokenLock.deploy(owner.address, safeToken, 0)).to.be.revertedWithCustomError(
-        SafeTokenLock,
-        'InvalidCooldownPeriod()',
-      )
+      await expect(SafeTokenLock.deploy(owner, safeToken, 0)).to.be.revertedWithCustomError(SafeTokenLock, 'InvalidCooldownPeriod()')
     })
   })
 
@@ -118,6 +126,9 @@ describe('Lock', function () {
     })
 
     it('Should be possible to lock all tokens', async function () {
+      if (isForkedNetwork()) {
+        this.skip()
+      }
       // This test checks the whether `uint96` is enough to hold all possible locked Safe Token.
       const { safeToken, safeTokenTotalSupply, safeTokenLock, tokenCollector, alice } = await setupTests()
       const tokenToLock = safeTokenTotalSupply
@@ -260,6 +271,9 @@ describe('Lock', function () {
     })
 
     it('Should be possible to unlock all tokens', async function () {
+      if (isForkedNetwork()) {
+        this.skip()
+      }
       const { safeToken, safeTokenTotalSupply, safeTokenLock, tokenCollector, alice } = await setupTests()
       const tokenToLock = safeTokenTotalSupply
       const tokenToUnlock = safeTokenTotalSupply
@@ -814,6 +828,9 @@ describe('Lock', function () {
     })
 
     it('Should be possible to withdraw all tokens', async function () {
+      if (isForkedNetwork()) {
+        this.skip()
+      }
       const { safeToken, safeTokenTotalSupply, safeTokenLock, tokenCollector, alice } = await setupTests()
       const tokenToLock = safeTokenTotalSupply
       const tokenToUnlock = safeTokenTotalSupply
@@ -956,12 +973,12 @@ describe('Lock', function () {
     })
 
     it('Should not allow Safe token recovery', async () => {
-      const { safeTokenLock, owner, safeToken } = await setupTests()
+      const { safeToken, safeTokenLock, owner } = await setupTests()
       expect(safeTokenLock.connect(owner).recoverERC20(safeToken, 0)).to.be.revertedWithCustomError(safeTokenLock, 'CannotRecoverSafeToken')
     })
 
     it('Should allow ERC20 recovery other than Safe token', async () => {
-      const { safeTokenLock, safeToken, owner } = await setupTests()
+      const { safeToken, safeTokenLock, owner } = await setupTests()
       const erc20 = await (await ethers.getContractFactory('TestERC20')).deploy('TEST', 'TEST')
 
       const amount = 1n
