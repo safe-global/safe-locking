@@ -1,5 +1,3 @@
-import "../helpers/erc20.spec";
-
 using SafeToken as safeToken;
 
 methods {
