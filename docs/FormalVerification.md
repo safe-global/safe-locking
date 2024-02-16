@@ -5,7 +5,7 @@
 | Invariant                                          | Description                                                                                                                                                                                   |
 | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `contractBalanceGreaterThanSumOfLockedAndUnlocked` | The Safe token balance of the contract must be always greater than the sum of the total locked and total unlocked tokens.                                                                     |
-| `unlockStartLessThanUnlockEnd`                     | `users` mapping stores the information about the start index and end index of the unlocks than can be withdrawn after respective cooldown period. The start index must be less than end index |
+| `unlockStartLessThanUnlockEnd`                     | `users` mapping stores the information about the start index and end index of the unlocks that can be withdrawn after the respective cooldown period. The start index must be less than the end index. |
 | `totalLockedGreaterThanInvidualLock`               | The value of the host variable that maintains the total sum of all currently locked tokens must be greater than individual locked value per user.                                             |
 
 ## Rules
