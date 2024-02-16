@@ -1,3 +1,5 @@
+import "../helpers/erc20.spec";
+
 using SafeToken as safeToken;
 
 methods {
@@ -12,7 +14,7 @@ methods {
     function getUserUnlock(address userAddress, uint32 index) external returns(SafeTokenLock.UnlockInfo memory) envfree;
     function getSafeTokenAddress() external returns(address) envfree;
     function getStartAndEnd(address userAddress) external returns(uint32, uint32) envfree;
-    function SafeToken.balanceOf(address) external returns(uint256) envfree;
+    function safeToken.balanceOf(address) external returns(uint256) envfree;
 
 }
 
@@ -41,6 +43,15 @@ hook Sload uint96 v currentContract.users[KEY address user].locked STORAGE {
 hook Sload uint96 v currentContract.users[KEY address user].unlocked STORAGE { 
     require userUnlocks[user] == to_mathint(v);
 }
+
+function safeAssumptions(address a, env e) {
+    require e.msg.sender != currentContract;
+    requireInvariant noAllowance(a);
+}
+
+invariant noAllowance(address a)
+    safeToken.allowance(a, e.msg.sender) == 0
+{ preserved with (env e) { safeAssumptions(a, e); } }
 
 // hook Sload uint96 v currentContract.users[KEY bytes32 ilk].locked STORAGE {
 //     require ArtGhost[ilk] == v;
@@ -174,8 +185,13 @@ hook Sstore SafeTokenLockHarness.users[KEY address key].unlocked uint96 value (u
 // sum can decrease only after 30 days are over -> assume ghost variable sum . separate spec: fix in spec file start time, increasing sum. f(...) > startTime
 // balance is greater than all locked and unlocked tokens
 
-invariant contractBalanceGreaterThanSumOfLockedAndUnlocked() 
-    to_mathint(safeToken.balanceOf(currentContract)) >= ghostLocked + ghostUnlocked;
+invariant contractBalanceGreaterThanSumOfLockedAndUnlocked(address a) 
+    to_mathint(safeToken.balanceOf(currentContract)) >= ghostLocked + ghostUnlocked
+    {
+        preserved with (env e){
+           requireInvariant safeToken.allowance(a, e.msg.sender) = 0;
+        }
+    }
 
 
 // rule unlockedTokensAlwaysLessOrEqualLocked{
