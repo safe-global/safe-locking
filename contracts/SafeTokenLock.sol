@@ -7,8 +7,9 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
- * @title SafeTokenLock - A Locking Contract for the Safe Tokens.
+ * @title SafeTokenLock - A Locking Contract for Safe Tokens.
  * @author @safe-global/safe-protocol
+ * @custom:security-contact bounty@safe.global
  */
 contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
     struct User {
@@ -25,8 +26,8 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
     /* solhint-disable var-name-mixedcase */
     IERC20 public immutable SAFE_TOKEN; // Safe Token Address.
     uint64 public immutable COOLDOWN_PERIOD; // Contains the cooldown period. Default will be 30 days.
-
     /* solhint-enable var-name-mixedcase */
+
     mapping(address => User) public users; // Contains the address => user info struct.
     mapping(uint32 => mapping(address => UnlockInfo)) public unlocks; // Contains the Unlock id => user => Unlock Info struct.
 
