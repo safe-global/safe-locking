@@ -1,4 +1,4 @@
-# SafeTokenLock contract invariants and rules for formal verification
+`SafeTokenLock` Contract Invariants and Rules for Formal Verification
 
 ## Invariants
 
