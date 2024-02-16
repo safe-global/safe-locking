@@ -1,5 +1,5 @@
 import { expect } from 'chai'
-import { deployments, ethers, getNamedAccounts } from 'hardhat'
+import { deployments, ethers, getNamedAccounts, network } from 'hardhat'
 import { time } from '@nomicfoundation/hardhat-network-helpers'
 import { cooldownPeriod, getSafeToken, getSafeTokenLock } from './utils/setup'
 import { timestamp, transferToken } from './utils/execution'
@@ -998,6 +998,113 @@ describe('Lock', function () {
 
       const contractSafeTokenBalanceAfter = await safeToken.balanceOf(safeTokenLock)
       expect(contractSafeTokenBalanceAfter).equals(contractSafeTokenBalanceBefore)
+    })
+  })
+
+  describe('Operations', function () {
+    it('Should handle all operations correctly among multiple users', async function () {
+      // This test is based on the test mentioned in the Operation section of the Implementation.
+      const { safeToken, safeTokenLock, tokenCollector, alice, bob } = await setupTests()
+      const tokenToLockAlice = ethers.parseUnits('250', 18)
+      const tokenToUnlockAlice1 = ethers.parseUnits('20', 18)
+      const tokenToUnlockAlice2 = ethers.parseUnits('50', 18)
+      const tokenToUnlockAlice3 = ethers.parseUnits('70', 18)
+      const tokenToLockBob = ethers.parseUnits('200', 18)
+      const tokenToUnlockBob1 = ethers.parseUnits('35', 18)
+      const tokenToUnlockBob2 = ethers.parseUnits('75', 18)
+
+      // Transfer tokens to Alice & Bob
+      await transferToken(safeToken, tokenCollector, alice, tokenToLockAlice)
+      await transferToken(safeToken, tokenCollector, bob, tokenToLockBob)
+
+      // Locking tokens for Alice
+      await safeToken.connect(alice).approve(safeTokenLock, tokenToLockAlice)
+      await safeTokenLock.connect(alice).lock(tokenToLockAlice)
+      expect(await safeTokenLock.users(alice)).to.deep.equal([tokenToLockAlice, 0n, 0n, 0n])
+
+      // Unlocking tokens for Alice
+      await safeTokenLock.connect(alice).unlock(tokenToUnlockAlice1)
+      expect(await safeTokenLock.users(alice)).to.deep.equal([tokenToLockAlice - tokenToUnlockAlice1, tokenToUnlockAlice1, 0n, 1n])
+      expect((await safeTokenLock.unlocks(0, alice)).amount).to.equal(tokenToUnlockAlice1)
+
+      // Locking tokens for Bob
+      await safeToken.connect(bob).approve(safeTokenLock, tokenToLockBob)
+      await safeTokenLock.connect(bob).lock(tokenToLockBob)
+      expect(await safeTokenLock.users(bob)).to.deep.equal([tokenToLockBob, 0n, 0n, 0n])
+
+      // Automine switched off to do transaction in the same timestamp
+      await network.provider.send('evm_setAutomine', [false])
+
+      // Unlocking tokens for Alice
+      await safeTokenLock.connect(alice).unlock(tokenToUnlockAlice2)
+
+      // Unlocking tokens for Bob
+      await safeTokenLock.connect(bob).unlock(tokenToUnlockBob1)
+
+      // Unlocking tokens for Alice
+      await safeTokenLock.connect(alice).unlock(tokenToUnlockAlice3)
+
+      // Restarting Automine and Dummy transaction to force the next block to be mined.
+      await network.provider.send('evm_setAutomine', [true])
+      await tokenCollector.sendTransaction({ to: tokenCollector, value: ethers.parseEther('1') })
+
+      // Checking updated status for Alice & Bob
+      expect(await safeTokenLock.users(bob)).to.deep.equal([tokenToLockBob - tokenToUnlockBob1, tokenToUnlockBob1, 0n, 1n])
+      expect((await safeTokenLock.unlocks(0, bob)).amount).to.equal(tokenToUnlockBob1)
+      expect(await safeTokenLock.users(alice)).to.deep.equal([
+        tokenToLockAlice - tokenToUnlockAlice1 - tokenToUnlockAlice2 - tokenToUnlockAlice3,
+        tokenToUnlockAlice1 + tokenToUnlockAlice2 + tokenToUnlockAlice3,
+        0n,
+        3n,
+      ])
+      expect((await safeTokenLock.unlocks(0, alice)).amount).to.equal(tokenToUnlockAlice1)
+      expect((await safeTokenLock.unlocks(1, alice)).amount).to.equal(tokenToUnlockAlice2)
+      expect((await safeTokenLock.unlocks(2, alice)).amount).to.equal(tokenToUnlockAlice3)
+
+      // Getting unlocked at timestamp and increasing timestamp
+      const unlockedAtT1 = (await safeTokenLock.unlocks(0, alice)).unlockedAt
+      await time.increaseTo(unlockedAtT1)
+
+      // Withdrawing tokens for Alice
+      await safeTokenLock.connect(alice).withdraw(1)
+      expect(await safeTokenLock.unlocks(0, alice)).to.deep.equal([0n, 0n])
+
+      // Unlocking tokens for Bob
+      await safeTokenLock.connect(bob).unlock(tokenToUnlockBob2)
+      expect(await safeTokenLock.users(bob)).to.deep.equal([
+        tokenToLockBob - tokenToUnlockBob1 - tokenToUnlockBob2,
+        tokenToUnlockBob1 + tokenToUnlockBob2,
+        0n,
+        2n,
+      ])
+      expect((await safeTokenLock.unlocks(1, bob)).amount).to.equal(tokenToUnlockBob2)
+
+      // Getting unlocked at timestamp and increasing timestamp
+      const unlockedAtT2 = (await safeTokenLock.unlocks(1, alice)).unlockedAt
+      await time.increaseTo(unlockedAtT2)
+
+      // Withdrawing tokens for Alice
+      await safeTokenLock.connect(alice).withdraw(0)
+      expect(await safeTokenLock.unlocks(1, alice)).to.deep.equal([0n, 0n])
+      expect(await safeTokenLock.unlocks(2, alice)).to.deep.equal([0n, 0n])
+
+      // Withdrawing tokens for Bob
+      await safeTokenLock.connect(bob).withdraw(0)
+      expect(await safeTokenLock.unlocks(0, bob)).to.deep.equal([0n, 0n])
+
+      // Checking Final State details
+      expect(await safeTokenLock.users(alice)).to.deep.equal([
+        tokenToLockAlice - tokenToUnlockAlice1 - tokenToUnlockAlice2 - tokenToUnlockAlice3,
+        0n,
+        3n,
+        3n,
+      ])
+      expect(await safeTokenLock.users(bob)).to.deep.equal([
+        tokenToLockBob - tokenToUnlockBob1 - tokenToUnlockBob2,
+        tokenToUnlockBob2,
+        1n,
+        2n,
+      ])
     })
   })
 })

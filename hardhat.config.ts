@@ -70,6 +70,7 @@ const userConfig: HardhatUserConfig = {
   networks: {
     hardhat: {
       ...forking,
+      gas: 'auto',
       tags: ['test'],
     },
     mainnet: {
