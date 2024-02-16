@@ -106,29 +106,29 @@ unlocks[1][B] = (0, 0)
 
 ### Operations
 
-| User | Operation | Time | Amount | users[User]        | unlocks[index][User]                                | Note                                         |
-| ---- | --------- | ---- | ------ | ------------------ | --------------------------------------------------- | -------------------------------------------- |
-| A    | Lock      |      | 2500   | (2500, 0, 0, 0)    |                                                     |                                              |
-| A    | Unlock    |      | 200    | (2300, 200, 0, 1)  | unlocks[0][A] → (200, t1)                           |                                              |
-| B    | Lock      |      | 2000   | (2000, 0, 0, 0)    |                                                     |                                              |
-| A    | Unlock    |      | 500    | (1800, 700, 0, 2)  | unlocks[1][A] → (500, t2)                           |                                              |
-| B    | Unlock    |      | 350    | (1650, 350, 0, 1)  | unlocks[0][B] → (350, t2)                           |                                              |
-| A    | Unlock    |      | 700    | (1100, 1400, 0, 3) | unlocks[2][A] → (700, t2)                           |                                              |
-| A    | Withdraw  | t1   |        | (1100, 1200, 1, 3) | unlocks[0][A] → (0, 0) ???                          |                                              |
-| B    | Unlock    |      | 750    | (900, 1100, 0, 2)  | unlocks[1][B] → (750, t3)                           |                                              |
-| A    | Withdraw  | t2   |        | (1100, 0, 3, 3)    | unlocks[2][A] → (0, 0) & unlocks[3][A] → (0, 0) ??? | Here 2 withdraw happens, as time t2 reached. |
-| B    | Withdraw  |      |        | (900, 750, 1, 2)   | unlocks[0][B] → (0, 0) ???                          |                                              |
+| User | Operation | Time | Amount | users[User]      | unlocks[index][User]                            | Note                                         |
+| ---- | --------- | ---- | ------ | ---------------- | ----------------------------------------------- | -------------------------------------------- |
+| A    | Lock      |      | 250    | (250, 0, 0, 0)   |                                                 |                                              |
+| A    | Unlock    |      | 20     | (230, 20, 0, 1)  | unlocks[0][A] → (20, t1)                        |                                              |
+| B    | Lock      |      | 20 0   | (200, 0, 0, 0)   |                                                 |                                              |
+| A    | Unlock    |      | 50     | (180, 70, 0, 2)  | unlocks[1][A] → (50, t2)                        |                                              |
+| B    | Unlock    |      | 35     | (165, 35, 0, 1)  | unlocks[0][B] → (35, t2)                        |                                              |
+| A    | Unlock    |      | 70     | (110, 140, 0, 3) | unlocks[2][A] → (70, t2)                        |                                              |
+| A    | Withdraw  | t1   |        | (110, 120, 1, 3) | unlocks[0][A] → (0, 0)                          |                                              |
+| B    | Unlock    |      | 75     | (90, 110, 0, 2)  | unlocks[1][B] → (75, t3)                        |                                              |
+| A    | Withdraw  | t2   |        | (110, 0, 3, 3)   | unlocks[2][A] → (0, 0) & unlocks[3][A] → (0, 0) | Here 2 withdraw happens, as time t2 reached. |
+| B    | Withdraw  |      |        | (90, 75, 1, 2)   | unlocks[0][B] → (0, 0)                          |                                              |
 
 ### Final State
 
 ```solidity
-users[A] = (1100, 0, 3, 3)
-users[B] = (900, 750, 1, 2)
+users[A] = (110, 0, 3, 3)
+users[B] = (90, 75, 1, 2)
 unlocks[0][A] = (0, 0)
 unlocks[1][A] = (0, 0)
 unlocks[2][A] = (0, 0)
 unlocks[0][B] = (0, 0)
-unlocks[1][B] = (750, t3)
+unlocks[1][B] = (75, t3)
 ```
 
 ## Note

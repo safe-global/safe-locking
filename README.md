@@ -99,11 +99,26 @@ sequenceDiagram
 npm ci
 ```
 
-### Run all tests:
+### Run tests:
+
+#### Locally
 
 ```bash
-npm run build
 npm run test
+```
+
+#### E2E
+
+```bash
+npm run test:e2e
+```
+
+NOTE: To run E2E test, `INFURA_KEY` in `.env` with the appropriate value to fork the Ethereum Mainnet.
+
+#### All tests
+
+```bash
+npm run test:all
 ```
 
 ### Deploy
@@ -132,7 +147,7 @@ npm run hardhat --network <network> local-verify
 
 #### Custom Networks
 
-It is possible to use the `NODE_URL` env var to connect to any EVM based network via an RPC endpoint. This connection then can be used with the `custom` network.
+It is possible to use the `CUSTOM_NODE_URL` env var to connect to any EVM based network via an RPC endpoint. This connection then can be used with the `custom` network.
 
 E.g. to deploy the Safe contract suite on that network you would run `npm run deploy-all custom`.
 

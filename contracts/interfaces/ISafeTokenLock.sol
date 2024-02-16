@@ -2,9 +2,10 @@
 pragma solidity 0.8.23;
 
 /**
- * @title ISafeTokenLock - An interface of the SafeTokenLock Contract.
+ * @title ISafeTokenLock - The Interface for the Safe Token Locking Contract.
  * @author @safe-global/safe-protocol
- * @dev The contract describes the function signature and events used in the Safe Token Lock Contract.
+ * @dev The contract describes the function signature and events used in the Safe token locking contract.
+ * @custom:security-contact bounty@safe.global
  */
 interface ISafeTokenLock {
     event Locked(address indexed holder, uint96 amount);

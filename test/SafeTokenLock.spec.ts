@@ -1,21 +1,34 @@
 import { expect } from 'chai'
-import { deployments, ethers } from 'hardhat'
+import { deployments, ethers, getNamedAccounts, network } from 'hardhat'
 import { time } from '@nomicfoundation/hardhat-network-helpers'
-import { cooldownPeriod, getSafeToken, getSafeTokenLock, safeTokenTotalSupply } from './utils/setup'
+import { cooldownPeriod, getSafeToken, getSafeTokenLock } from './utils/setup'
 import { timestamp, transferToken } from './utils/execution'
 import { ZeroAddress } from 'ethers'
+import { isForkedNetwork } from '../src/utils/e2e'
 
 describe('Lock', function () {
   const setupTests = deployments.createFixture(async ({ deployments }) => {
     await deployments.fixture()
-    const [deployer, owner, tokenCollector, alice, bob, carol] = await ethers.getSigners()
+    let safeTokenToTransfer
+    const { owner: ownerAddress } = await getNamedAccounts()
+    const owner = await ethers.getImpersonatedSigner(ownerAddress)
 
     const safeToken = await getSafeToken()
-    await safeToken.unpause() // Tokens are initially paused in SafeToken
-    await transferToken(safeToken, deployer, tokenCollector, safeTokenTotalSupply)
+    if (isForkedNetwork()) {
+      safeTokenToTransfer = await safeToken.balanceOf(owner)
+    } else {
+      safeTokenToTransfer = await safeToken.totalSupply()
+    }
+
+    const [, , tokenCollector, alice, bob, carol] = await ethers.getSigners()
+    await tokenCollector.sendTransaction({ to: owner, value: ethers.parseUnits('10', 18) })
+    const safeTokenTotalSupply = await safeToken.totalSupply()
+
+    await safeToken.connect(owner).unpause() // Tokens are initially paused in SafeToken
+    await transferToken(safeToken, owner, tokenCollector, safeTokenToTransfer)
 
     const safeTokenLock = await getSafeTokenLock()
-    return { safeToken, safeTokenLock, deployer, owner, tokenCollector, alice, bob, carol }
+    return { safeToken, safeTokenTotalSupply, safeTokenLock, owner, tokenCollector, alice, bob, carol }
   })
 
   describe('Deployment', function () {
@@ -34,7 +47,7 @@ describe('Lock', function () {
     it('Should not deploy with zero address', async function () {
       const SafeTokenLock = await ethers.getContractFactory('SafeTokenLock')
       const { owner } = await setupTests()
-      await expect(SafeTokenLock.deploy(owner.address, ZeroAddress, cooldownPeriod)).to.be.revertedWithCustomError(
+      await expect(SafeTokenLock.deploy(owner, ZeroAddress, cooldownPeriod)).to.be.revertedWithCustomError(
         SafeTokenLock,
         'InvalidSafeTokenAddress()',
       )
@@ -44,10 +57,7 @@ describe('Lock', function () {
       const { safeToken, owner } = await setupTests()
 
       const SafeTokenLock = await ethers.getContractFactory('SafeTokenLock')
-      await expect(SafeTokenLock.deploy(owner.address, safeToken, 0)).to.be.revertedWithCustomError(
-        SafeTokenLock,
-        'InvalidCooldownPeriod()',
-      )
+      await expect(SafeTokenLock.deploy(owner, safeToken, 0)).to.be.revertedWithCustomError(SafeTokenLock, 'InvalidCooldownPeriod()')
     })
   })
 
@@ -116,8 +126,11 @@ describe('Lock', function () {
     })
 
     it('Should be possible to lock all tokens', async function () {
+      if (isForkedNetwork()) {
+        this.skip()
+      }
       // This test checks the whether `uint96` is enough to hold all possible locked Safe Token.
-      const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
+      const { safeToken, safeTokenTotalSupply, safeTokenLock, tokenCollector, alice } = await setupTests()
       const tokenToLock = safeTokenTotalSupply
 
       // Transfer tokens to Alice
@@ -258,7 +271,10 @@ describe('Lock', function () {
     })
 
     it('Should be possible to unlock all tokens', async function () {
-      const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
+      if (isForkedNetwork()) {
+        this.skip()
+      }
+      const { safeToken, safeTokenTotalSupply, safeTokenLock, tokenCollector, alice } = await setupTests()
       const tokenToLock = safeTokenTotalSupply
       const tokenToUnlock = safeTokenTotalSupply
 
@@ -812,7 +828,10 @@ describe('Lock', function () {
     })
 
     it('Should be possible to withdraw all tokens', async function () {
-      const { safeToken, safeTokenLock, tokenCollector, alice } = await setupTests()
+      if (isForkedNetwork()) {
+        this.skip()
+      }
+      const { safeToken, safeTokenTotalSupply, safeTokenLock, tokenCollector, alice } = await setupTests()
       const tokenToLock = safeTokenTotalSupply
       const tokenToUnlock = safeTokenTotalSupply
 
@@ -954,12 +973,12 @@ describe('Lock', function () {
     })
 
     it('Should not allow Safe token recovery', async () => {
-      const { safeTokenLock, owner, safeToken } = await setupTests()
+      const { safeToken, safeTokenLock, owner } = await setupTests()
       expect(safeTokenLock.connect(owner).recoverERC20(safeToken, 0)).to.be.revertedWithCustomError(safeTokenLock, 'CannotRecoverSafeToken')
     })
 
     it('Should allow ERC20 recovery other than Safe token', async () => {
-      const { safeTokenLock, safeToken, owner } = await setupTests()
+      const { safeToken, safeTokenLock, owner } = await setupTests()
       const erc20 = await (await ethers.getContractFactory('TestERC20')).deploy('TEST', 'TEST')
 
       const amount = 1n
@@ -979,6 +998,113 @@ describe('Lock', function () {
 
       const contractSafeTokenBalanceAfter = await safeToken.balanceOf(safeTokenLock)
       expect(contractSafeTokenBalanceAfter).equals(contractSafeTokenBalanceBefore)
+    })
+  })
+
+  describe('Operations', function () {
+    it('Should handle all operations correctly among multiple users', async function () {
+      // This test is based on the test mentioned in the Operation section of the Implementation.
+      const { safeToken, safeTokenLock, tokenCollector, alice, bob } = await setupTests()
+      const tokenToLockAlice = ethers.parseUnits('250', 18)
+      const tokenToUnlockAlice1 = ethers.parseUnits('20', 18)
+      const tokenToUnlockAlice2 = ethers.parseUnits('50', 18)
+      const tokenToUnlockAlice3 = ethers.parseUnits('70', 18)
+      const tokenToLockBob = ethers.parseUnits('200', 18)
+      const tokenToUnlockBob1 = ethers.parseUnits('35', 18)
+      const tokenToUnlockBob2 = ethers.parseUnits('75', 18)
+
+      // Transfer tokens to Alice & Bob
+      await transferToken(safeToken, tokenCollector, alice, tokenToLockAlice)
+      await transferToken(safeToken, tokenCollector, bob, tokenToLockBob)
+
+      // Locking tokens for Alice
+      await safeToken.connect(alice).approve(safeTokenLock, tokenToLockAlice)
+      await safeTokenLock.connect(alice).lock(tokenToLockAlice)
+      expect(await safeTokenLock.users(alice)).to.deep.equal([tokenToLockAlice, 0n, 0n, 0n])
+
+      // Unlocking tokens for Alice
+      await safeTokenLock.connect(alice).unlock(tokenToUnlockAlice1)
+      expect(await safeTokenLock.users(alice)).to.deep.equal([tokenToLockAlice - tokenToUnlockAlice1, tokenToUnlockAlice1, 0n, 1n])
+      expect((await safeTokenLock.unlocks(0, alice)).amount).to.equal(tokenToUnlockAlice1)
+
+      // Locking tokens for Bob
+      await safeToken.connect(bob).approve(safeTokenLock, tokenToLockBob)
+      await safeTokenLock.connect(bob).lock(tokenToLockBob)
+      expect(await safeTokenLock.users(bob)).to.deep.equal([tokenToLockBob, 0n, 0n, 0n])
+
+      // Automine switched off to do transaction in the same timestamp
+      await network.provider.send('evm_setAutomine', [false])
+
+      // Unlocking tokens for Alice
+      await safeTokenLock.connect(alice).unlock(tokenToUnlockAlice2)
+
+      // Unlocking tokens for Bob
+      await safeTokenLock.connect(bob).unlock(tokenToUnlockBob1)
+
+      // Unlocking tokens for Alice
+      await safeTokenLock.connect(alice).unlock(tokenToUnlockAlice3)
+
+      // Restarting Automine and Dummy transaction to force the next block to be mined.
+      await network.provider.send('evm_setAutomine', [true])
+      await tokenCollector.sendTransaction({ to: tokenCollector, value: ethers.parseEther('1') })
+
+      // Checking updated status for Alice & Bob
+      expect(await safeTokenLock.users(bob)).to.deep.equal([tokenToLockBob - tokenToUnlockBob1, tokenToUnlockBob1, 0n, 1n])
+      expect((await safeTokenLock.unlocks(0, bob)).amount).to.equal(tokenToUnlockBob1)
+      expect(await safeTokenLock.users(alice)).to.deep.equal([
+        tokenToLockAlice - tokenToUnlockAlice1 - tokenToUnlockAlice2 - tokenToUnlockAlice3,
+        tokenToUnlockAlice1 + tokenToUnlockAlice2 + tokenToUnlockAlice3,
+        0n,
+        3n,
+      ])
+      expect((await safeTokenLock.unlocks(0, alice)).amount).to.equal(tokenToUnlockAlice1)
+      expect((await safeTokenLock.unlocks(1, alice)).amount).to.equal(tokenToUnlockAlice2)
+      expect((await safeTokenLock.unlocks(2, alice)).amount).to.equal(tokenToUnlockAlice3)
+
+      // Getting unlocked at timestamp and increasing timestamp
+      const unlockedAtT1 = (await safeTokenLock.unlocks(0, alice)).unlockedAt
+      await time.increaseTo(unlockedAtT1)
+
+      // Withdrawing tokens for Alice
+      await safeTokenLock.connect(alice).withdraw(1)
+      expect(await safeTokenLock.unlocks(0, alice)).to.deep.equal([0n, 0n])
+
+      // Unlocking tokens for Bob
+      await safeTokenLock.connect(bob).unlock(tokenToUnlockBob2)
+      expect(await safeTokenLock.users(bob)).to.deep.equal([
+        tokenToLockBob - tokenToUnlockBob1 - tokenToUnlockBob2,
+        tokenToUnlockBob1 + tokenToUnlockBob2,
+        0n,
+        2n,
+      ])
+      expect((await safeTokenLock.unlocks(1, bob)).amount).to.equal(tokenToUnlockBob2)
+
+      // Getting unlocked at timestamp and increasing timestamp
+      const unlockedAtT2 = (await safeTokenLock.unlocks(1, alice)).unlockedAt
+      await time.increaseTo(unlockedAtT2)
+
+      // Withdrawing tokens for Alice
+      await safeTokenLock.connect(alice).withdraw(0)
+      expect(await safeTokenLock.unlocks(1, alice)).to.deep.equal([0n, 0n])
+      expect(await safeTokenLock.unlocks(2, alice)).to.deep.equal([0n, 0n])
+
+      // Withdrawing tokens for Bob
+      await safeTokenLock.connect(bob).withdraw(0)
+      expect(await safeTokenLock.unlocks(0, bob)).to.deep.equal([0n, 0n])
+
+      // Checking Final State details
+      expect(await safeTokenLock.users(alice)).to.deep.equal([
+        tokenToLockAlice - tokenToUnlockAlice1 - tokenToUnlockAlice2 - tokenToUnlockAlice3,
+        0n,
+        3n,
+        3n,
+      ])
+      expect(await safeTokenLock.users(bob)).to.deep.equal([
+        tokenToLockBob - tokenToUnlockBob1 - tokenToUnlockBob2,
+        tokenToUnlockBob2,
+        1n,
+        2n,
+      ])
     })
   })
 })
