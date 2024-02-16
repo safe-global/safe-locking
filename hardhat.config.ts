@@ -12,7 +12,8 @@ const argv = yargs(process.argv.slice(2))
 
 // Load environment variables.
 dotenv.config()
-const { NODE_URL, INFURA_KEY, MNEMONIC, ETHERSCAN_API_KEY, PK, SOLIDITY_VERSION, SOLIDITY_SETTINGS, OWNER } = process.env
+const { CUSTOM_NODE_URL, HARDHAT_FORK, INFURA_KEY, MNEMONIC, ETHERSCAN_API_KEY, PK, SOLIDITY_VERSION, SOLIDITY_SETTINGS, OWNER } =
+  process.env
 
 const DEFAULT_MNEMONIC = 'candy maple cake sugar pudding cream honey rich smooth crumble sweet treat'
 
@@ -25,7 +26,7 @@ if (PK) {
   }
 }
 
-if (['mainnet', 'sepolia'].includes(argv.network) && INFURA_KEY === undefined) {
+if ((['mainnet', 'sepolia'].includes(argv.network) || HARDHAT_FORK) && INFURA_KEY === undefined) {
   throw new Error(`Could not find Infura key in env, unable to connect to network ${argv.network}`)
 }
 
@@ -44,14 +45,16 @@ const soliditySettings = SOLIDITY_SETTINGS
       },
     }
 
-const customNetwork = NODE_URL
+const customNetwork = CUSTOM_NODE_URL
   ? {
       custom: {
         ...sharedNetworkConfig,
-        url: NODE_URL,
+        url: CUSTOM_NODE_URL,
       },
     }
   : {}
+
+const forking = HARDHAT_FORK ? { forking: { enabled: true, url: `https://mainnet.infura.io/v3/${INFURA_KEY}` } } : {}
 
 const userConfig: HardhatUserConfig = {
   paths: {
@@ -66,9 +69,7 @@ const userConfig: HardhatUserConfig = {
   },
   networks: {
     hardhat: {
-      blockGasLimit: 100000000,
-      gas: 100000000,
-      gasPrice: 10000000000,
+      ...forking,
       tags: ['test'],
     },
     mainnet: {

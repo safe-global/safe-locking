@@ -1,4 +1,6 @@
 import { deployments, ethers } from 'hardhat'
+import { isForkedNetwork } from '../../src/utils/e2e'
+import { Address } from 'hardhat-deploy/types'
 
 export const cooldownPeriod = 60 * 60 * 24 * 30 // 30 days
 
@@ -8,6 +10,12 @@ export const getSafeTokenLock = async () => {
 }
 
 export const getSafeToken = async () => {
-  const SafeTokenDeployment = await deployments.get('SafeToken')
-  return await ethers.getContractAt('SafeToken', SafeTokenDeployment.address)
+  let SafeTokenDeploymentAddress
+  if (isForkedNetwork()) {
+    const { SAFE_TOKEN } = process.env
+    SafeTokenDeploymentAddress = SAFE_TOKEN as Address
+  } else {
+    SafeTokenDeploymentAddress = (await deployments.get('SafeToken')).address
+  }
+  return await ethers.getContractAt('SafeToken', SafeTokenDeploymentAddress)
 }
