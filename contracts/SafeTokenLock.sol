@@ -28,8 +28,8 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
     uint64 public immutable COOLDOWN_PERIOD; // Contains the cooldown period. Default will be 30 days.
     /* solhint-enable var-name-mixedcase */
 
-    mapping(address => User) public users; // Contains the address => user info struct.
-    mapping(uint32 => mapping(address => UnlockInfo)) public unlocks; // Contains the Unlock id => user => Unlock Info struct.
+    mapping(address => User) internal users; // Contains the address => user info struct.
+    mapping(uint32 => mapping(address => UnlockInfo)) internal unlocks; // Contains the Unlock id => user => Unlock Info struct.
 
     /**
      * @notice Error indicating an attempt to use the zero address as Safe Token address.
@@ -125,5 +125,13 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
     function recoverERC20(IERC20 token, uint256 amount) external onlyOwner {
         if (token == SAFE_TOKEN) revert CannotRecoverSafeToken();
         token.transfer(msg.sender, amount);
+    }
+
+    function getUser(address userAddress) external view returns (User memory) {
+        return users[userAddress];
+    }
+
+    function getUserUnlock(address userAddress, uint32 index) external view returns (UnlockInfo memory) {
+        return unlocks[index][userAddress];
     }
 }

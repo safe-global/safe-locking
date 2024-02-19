@@ -77,7 +77,7 @@ describe('Lock', function () {
       expect(await safeToken.balanceOf(safeTokenLock)).to.equal(tokenToLock)
 
       // Checking Locked Token details
-      expect((await safeTokenLock.users(alice)).locked).to.equal(tokenToLock)
+      expect((await safeTokenLock.getUser(alice)).locked).to.equal(tokenToLock)
       expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToLock)
     })
 
@@ -107,21 +107,21 @@ describe('Lock', function () {
       let aliceTokenBalance = await safeToken.balanceOf(alice)
 
       // Locking tokens multiple times
-      let aliceSafeTokenLockTokenBalance = (await safeTokenLock.users(alice)).locked
+      let aliceSafeTokenLockTokenBalance = (await safeTokenLock.getUser(alice)).locked
       let safeTokenLockTokenBalance = await safeToken.balanceOf(safeTokenLock)
       await safeToken.connect(alice).approve(safeTokenLock, totalTokensToLock)
       for (let index = 0; index < 5; index++) {
         await safeTokenLock.connect(alice).lock(tokenToLock)
         expect(await safeToken.balanceOf(alice)).to.equal(aliceTokenBalance - tokenToLock)
         expect(await safeToken.balanceOf(safeTokenLock)).to.equal(safeTokenLockTokenBalance + tokenToLock)
-        expect((await safeTokenLock.users(alice)).locked).to.equal(aliceSafeTokenLockTokenBalance + tokenToLock)
+        expect((await safeTokenLock.getUser(alice)).locked).to.equal(aliceSafeTokenLockTokenBalance + tokenToLock)
         aliceTokenBalance = await safeToken.balanceOf(alice)
-        aliceSafeTokenLockTokenBalance = (await safeTokenLock.users(alice)).locked
+        aliceSafeTokenLockTokenBalance = (await safeTokenLock.getUser(alice)).locked
         safeTokenLockTokenBalance = await safeToken.balanceOf(safeTokenLock)
       }
 
       // Checking Final Locked Token details
-      expect((await safeTokenLock.users(alice)).locked).to.equal(totalTokensToLock)
+      expect((await safeTokenLock.getUser(alice)).locked).to.equal(totalTokensToLock)
       expect(await safeTokenLock.totalBalance(alice)).to.equal(totalTokensToLock)
     })
 
@@ -141,7 +141,7 @@ describe('Lock', function () {
       await safeTokenLock.connect(alice).lock(tokenToLock)
 
       // Checking Locked Token details
-      expect((await safeTokenLock.users(alice)).locked).to.equal(tokenToLock)
+      expect((await safeTokenLock.getUser(alice)).locked).to.equal(tokenToLock)
       expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToLock)
     })
 
@@ -192,12 +192,12 @@ describe('Lock', function () {
       const expectedUnlockedAt = currentTimestamp + cooldownPeriod
 
       // Checking Locked & Unlocked Token details
-      expect((await safeTokenLock.users(alice)).locked).to.equal(tokenToLock - tokenToUnlock)
-      expect((await safeTokenLock.users(alice)).unlocked).to.equal(tokenToUnlock)
-      expect((await safeTokenLock.users(alice)).unlockStart).to.equal(0)
-      expect((await safeTokenLock.users(alice)).unlockEnd).to.equal(1)
-      expect((await safeTokenLock.unlocks(0, alice)).amount).to.equal(tokenToUnlock)
-      expect((await safeTokenLock.unlocks(0, alice)).unlockedAt).to.equal(expectedUnlockedAt)
+      expect((await safeTokenLock.getUser(alice)).locked).to.equal(tokenToLock - tokenToUnlock)
+      expect((await safeTokenLock.getUser(alice)).unlocked).to.equal(tokenToUnlock)
+      expect((await safeTokenLock.getUser(alice)).unlockStart).to.equal(0)
+      expect((await safeTokenLock.getUser(alice)).unlockEnd).to.equal(1)
+      expect((await safeTokenLock.getUserUnlock(alice, 0)).amount).to.equal(tokenToUnlock)
+      expect((await safeTokenLock.getUserUnlock(alice, 0)).unlockedAt).to.equal(expectedUnlockedAt)
       expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToLock)
     })
 
@@ -242,8 +242,8 @@ describe('Lock', function () {
 
       // Unlocking tokens multiple times
       const cooldownPeriod = await safeTokenLock.COOLDOWN_PERIOD()
-      let currentLocked = (await safeTokenLock.users(alice)).locked
-      let currentUnlocked = (await safeTokenLock.users(alice)).unlocked
+      let currentLocked = (await safeTokenLock.getUser(alice)).locked
+      let currentUnlocked = (await safeTokenLock.getUser(alice)).unlocked
       let index = 0
       for (; index < 5; index++) {
         await safeTokenLock.connect(alice).unlock(tokenToUnlock)
@@ -252,21 +252,21 @@ describe('Lock', function () {
         const expectedUnlockedAt = BigInt(await timestamp()) + cooldownPeriod
 
         // Checking Locked & Unlocked Token details
-        expect((await safeTokenLock.users(alice)).locked).to.equal(currentLocked - tokenToUnlock)
-        expect((await safeTokenLock.users(alice)).unlocked).to.equal(currentUnlocked + tokenToUnlock)
-        expect((await safeTokenLock.users(alice)).unlockStart).to.equal(0)
-        expect((await safeTokenLock.users(alice)).unlockEnd).to.equal(index + 1)
-        expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(tokenToUnlock)
-        expect((await safeTokenLock.unlocks(index, alice)).unlockedAt).to.equal(expectedUnlockedAt)
-        currentLocked = (await safeTokenLock.users(alice)).locked
-        currentUnlocked = (await safeTokenLock.users(alice)).unlocked
+        expect((await safeTokenLock.getUser(alice)).locked).to.equal(currentLocked - tokenToUnlock)
+        expect((await safeTokenLock.getUser(alice)).unlocked).to.equal(currentUnlocked + tokenToUnlock)
+        expect((await safeTokenLock.getUser(alice)).unlockStart).to.equal(0)
+        expect((await safeTokenLock.getUser(alice)).unlockEnd).to.equal(index + 1)
+        expect((await safeTokenLock.getUserUnlock(alice, index)).amount).to.equal(tokenToUnlock)
+        expect((await safeTokenLock.getUserUnlock(alice, index)).unlockedAt).to.equal(expectedUnlockedAt)
+        currentLocked = (await safeTokenLock.getUser(alice)).locked
+        currentUnlocked = (await safeTokenLock.getUser(alice)).unlocked
       }
 
       // Checking Final Locked & Unlocked Token details
-      expect((await safeTokenLock.users(alice)).locked).to.equal(tokenToLock - tokenToUnlock * BigInt(index))
-      expect((await safeTokenLock.users(alice)).unlocked).to.equal(tokenToUnlock * BigInt(index))
-      expect((await safeTokenLock.users(alice)).unlockStart).to.equal(0)
-      expect((await safeTokenLock.users(alice)).unlockEnd).to.equal(index)
+      expect((await safeTokenLock.getUser(alice)).locked).to.equal(tokenToLock - tokenToUnlock * BigInt(index))
+      expect((await safeTokenLock.getUser(alice)).unlocked).to.equal(tokenToUnlock * BigInt(index))
+      expect((await safeTokenLock.getUser(alice)).unlockStart).to.equal(0)
+      expect((await safeTokenLock.getUser(alice)).unlockEnd).to.equal(index)
       expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToLock)
     })
 
@@ -294,12 +294,12 @@ describe('Lock', function () {
       const expectedUnlockedAt = currentTimestamp + cooldownPeriod
 
       // Checking Locked & Unlocked Token details
-      expect((await safeTokenLock.users(alice)).locked).to.equal(0)
-      expect((await safeTokenLock.users(alice)).unlocked).to.equal(tokenToUnlock)
-      expect((await safeTokenLock.users(alice)).unlockStart).to.equal(0)
-      expect((await safeTokenLock.users(alice)).unlockEnd).to.equal(1)
-      expect((await safeTokenLock.unlocks(0, alice)).amount).to.equal(tokenToUnlock)
-      expect((await safeTokenLock.unlocks(0, alice)).unlockedAt).to.equal(expectedUnlockedAt)
+      expect((await safeTokenLock.getUser(alice)).locked).to.equal(0)
+      expect((await safeTokenLock.getUser(alice)).unlocked).to.equal(tokenToUnlock)
+      expect((await safeTokenLock.getUser(alice)).unlockStart).to.equal(0)
+      expect((await safeTokenLock.getUser(alice)).unlockEnd).to.equal(1)
+      expect((await safeTokenLock.getUserUnlock(alice, 0)).amount).to.equal(tokenToUnlock)
+      expect((await safeTokenLock.getUserUnlock(alice, 0)).unlockedAt).to.equal(expectedUnlockedAt)
       expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToUnlock)
     })
 
@@ -371,10 +371,10 @@ describe('Lock', function () {
       const expectedUnlockedAtBob = currentTimestampBob + cooldownPeriod
 
       // Checking Unlocked Token details of Alice and Bob
-      expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(tokenToUnlockAlice)
-      expect((await safeTokenLock.unlocks(index, alice)).unlockedAt).to.equal(expectedUnlockedAtAlice)
-      expect((await safeTokenLock.unlocks(index, bob)).amount).to.equal(tokenToUnlockBob)
-      expect((await safeTokenLock.unlocks(index, bob)).unlockedAt).to.equal(expectedUnlockedAtBob)
+      expect((await safeTokenLock.getUserUnlock(alice, index)).amount).to.equal(tokenToUnlockAlice)
+      expect((await safeTokenLock.getUserUnlock(alice, index)).unlockedAt).to.equal(expectedUnlockedAtAlice)
+      expect((await safeTokenLock.getUserUnlock(bob, index)).amount).to.equal(tokenToUnlockBob)
+      expect((await safeTokenLock.getUserUnlock(bob, index)).unlockedAt).to.equal(expectedUnlockedAtBob)
       expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToLockAlice)
       expect(await safeTokenLock.totalBalance(bob)).to.equal(tokenToLockBob)
     })
@@ -397,27 +397,27 @@ describe('Lock', function () {
       await safeTokenLock.connect(alice).unlock(tokenToUnlock)
 
       // Getting unlocked at timestamp and increasing timestamp
-      const unlockedAt = (await safeTokenLock.unlocks(0, alice)).unlockedAt
+      const unlockedAt = (await safeTokenLock.getUserUnlock(alice, 0)).unlockedAt
       await time.increaseTo(unlockedAt)
 
       // Withdrawing tokens
       const aliceTokenBalanceBefore = await safeToken.balanceOf(alice)
-      const aliceUnlockContractBalanceBefore = (await safeTokenLock.users(alice)).unlocked
-      const aliceUnlockStartBefore = (await safeTokenLock.users(alice)).unlockStart
-      const aliceUnlockEndBefore = (await safeTokenLock.users(alice)).unlockEnd
+      const aliceUnlockContractBalanceBefore = (await safeTokenLock.getUser(alice)).unlocked
+      const aliceUnlockStartBefore = (await safeTokenLock.getUser(alice)).unlockStart
+      const aliceUnlockEndBefore = (await safeTokenLock.getUser(alice)).unlockEnd
       await safeTokenLock.connect(alice).withdraw(1)
       const aliceTokenBalanceAfter = await safeToken.balanceOf(alice)
-      const aliceUnlockContractBalanceAfter = (await safeTokenLock.users(alice)).unlocked
-      const aliceUnlockStartAfter = (await safeTokenLock.users(alice)).unlockStart
-      const aliceUnlockEndAfter = (await safeTokenLock.users(alice)).unlockEnd
+      const aliceUnlockContractBalanceAfter = (await safeTokenLock.getUser(alice)).unlocked
+      const aliceUnlockStartAfter = (await safeTokenLock.getUser(alice)).unlockStart
+      const aliceUnlockEndAfter = (await safeTokenLock.getUser(alice)).unlockEnd
 
       // Checking Token Balance & Unlocked Token details
       expect(aliceTokenBalanceAfter).to.equal(aliceTokenBalanceBefore + tokenToUnlock)
       expect(aliceUnlockContractBalanceAfter).to.equal(aliceUnlockContractBalanceBefore - tokenToUnlock)
       expect(aliceUnlockStartAfter).to.equal(aliceUnlockStartBefore + 1n)
       expect(aliceUnlockEndAfter).to.equal(aliceUnlockEndBefore)
-      expect((await safeTokenLock.unlocks(0, alice)).amount).to.equal(0)
-      expect((await safeTokenLock.unlocks(0, alice)).unlockedAt).to.equal(0)
+      expect((await safeTokenLock.getUserUnlock(alice, 0)).amount).to.equal(0)
+      expect((await safeTokenLock.getUserUnlock(alice, 0)).unlockedAt).to.equal(0)
       expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToLock - tokenToUnlock)
     })
 
@@ -449,19 +449,19 @@ describe('Lock', function () {
       }
 
       // Getting unlocked at timestamp and increasing timestamp
-      const unlockedAt = (await safeTokenLock.unlocks(index - 1, alice)).unlockedAt
+      const unlockedAt = (await safeTokenLock.getUserUnlock(alice, index - 1)).unlockedAt
       await time.increaseTo(unlockedAt)
 
       // Withdrawing tokens
       const aliceTokenBalanceBefore = await safeToken.balanceOf(alice)
-      const aliceUnlockContractBalanceBefore = (await safeTokenLock.users(alice)).unlocked
-      const aliceUnlockStartBefore = (await safeTokenLock.users(alice)).unlockStart
-      const aliceUnlockEndBefore = (await safeTokenLock.users(alice)).unlockEnd
+      const aliceUnlockContractBalanceBefore = (await safeTokenLock.getUser(alice)).unlocked
+      const aliceUnlockStartBefore = (await safeTokenLock.getUser(alice)).unlockStart
+      const aliceUnlockEndBefore = (await safeTokenLock.getUser(alice)).unlockEnd
       await safeTokenLock.connect(alice).withdraw(5)
       const aliceTokenBalanceAfter = await safeToken.balanceOf(alice)
-      const aliceUnlockContractBalanceAfter = (await safeTokenLock.users(alice)).unlocked
-      const aliceUnlockStartAfter = (await safeTokenLock.users(alice)).unlockStart
-      const aliceUnlockEndAfter = (await safeTokenLock.users(alice)).unlockEnd
+      const aliceUnlockContractBalanceAfter = (await safeTokenLock.getUser(alice)).unlocked
+      const aliceUnlockStartAfter = (await safeTokenLock.getUser(alice)).unlockStart
+      const aliceUnlockEndAfter = (await safeTokenLock.getUser(alice)).unlockEnd
 
       // Checking Final Token Balance & Unlocked Token details
       expect(aliceTokenBalanceAfter).to.equal(aliceTokenBalanceBefore + tokenToUnlock * BigInt(index))
@@ -471,8 +471,8 @@ describe('Lock', function () {
 
       index = 0
       for (; index < 5; index++) {
-        expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(0)
-        expect((await safeTokenLock.unlocks(index, alice)).unlockedAt).to.equal(0)
+        expect((await safeTokenLock.getUserUnlock(alice, index)).amount).to.equal(0)
+        expect((await safeTokenLock.getUserUnlock(alice, index)).unlockedAt).to.equal(0)
       }
       expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToLock - tokenToUnlock * BigInt(index))
     })
@@ -496,19 +496,19 @@ describe('Lock', function () {
       }
 
       // Getting unlocked at timestamp and increasing timestamp
-      const unlockedAt = (await safeTokenLock.unlocks(index - 1, alice)).unlockedAt
+      const unlockedAt = (await safeTokenLock.getUserUnlock(alice, index - 1)).unlockedAt
       await time.increaseTo(unlockedAt)
 
       // Withdrawing tokens
       const aliceTokenBalanceBefore = await safeToken.balanceOf(alice)
-      const aliceUnlockContractBalanceBefore = (await safeTokenLock.users(alice)).unlocked
-      const aliceUnlockStartBefore = (await safeTokenLock.users(alice)).unlockStart
-      const aliceUnlockEndBefore = (await safeTokenLock.users(alice)).unlockEnd
+      const aliceUnlockContractBalanceBefore = (await safeTokenLock.getUser(alice)).unlocked
+      const aliceUnlockStartBefore = (await safeTokenLock.getUser(alice)).unlockStart
+      const aliceUnlockEndBefore = (await safeTokenLock.getUser(alice)).unlockEnd
       await safeTokenLock.connect(alice).withdraw(0)
       const aliceTokenBalanceAfter = await safeToken.balanceOf(alice)
-      const aliceUnlockContractBalanceAfter = (await safeTokenLock.users(alice)).unlocked
-      const aliceUnlockStartAfter = (await safeTokenLock.users(alice)).unlockStart
-      const aliceUnlockEndAfter = (await safeTokenLock.users(alice)).unlockEnd
+      const aliceUnlockContractBalanceAfter = (await safeTokenLock.getUser(alice)).unlocked
+      const aliceUnlockStartAfter = (await safeTokenLock.getUser(alice)).unlockStart
+      const aliceUnlockEndAfter = (await safeTokenLock.getUser(alice)).unlockEnd
 
       // Checking Final Token Balance & Unlocked Token details
       expect(aliceTokenBalanceAfter).to.equal(aliceTokenBalanceBefore + tokenToUnlock * BigInt(index))
@@ -518,8 +518,8 @@ describe('Lock', function () {
 
       index = 0
       for (; index < 5; index++) {
-        expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(0)
-        expect((await safeTokenLock.unlocks(index, alice)).unlockedAt).to.equal(0)
+        expect((await safeTokenLock.getUserUnlock(alice, index)).amount).to.equal(0)
+        expect((await safeTokenLock.getUserUnlock(alice, index)).unlockedAt).to.equal(0)
       }
       expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToLock - tokenToUnlock * BigInt(index))
     })
@@ -543,19 +543,19 @@ describe('Lock', function () {
       }
 
       // Getting unlocked at timestamp and increasing timestamp
-      let unlockedAt = (await safeTokenLock.unlocks(5, alice)).unlockedAt
+      let unlockedAt = (await safeTokenLock.getUserUnlock(alice, 5)).unlockedAt
       await time.increaseTo(unlockedAt)
 
       // Withdrawing tokens for first 3 unlocks (even though 5 unlocks are matured.)
       let aliceTokenBalanceBefore = await safeToken.balanceOf(alice)
-      let aliceUnlockContractBalanceBefore = (await safeTokenLock.users(alice)).unlocked
-      let aliceUnlockStartBefore = (await safeTokenLock.users(alice)).unlockStart
-      let aliceUnlockEndBefore = (await safeTokenLock.users(alice)).unlockEnd
+      let aliceUnlockContractBalanceBefore = (await safeTokenLock.getUser(alice)).unlocked
+      let aliceUnlockStartBefore = (await safeTokenLock.getUser(alice)).unlockStart
+      let aliceUnlockEndBefore = (await safeTokenLock.getUser(alice)).unlockEnd
       await safeTokenLock.connect(alice).withdraw(3)
       let aliceTokenBalanceAfter = await safeToken.balanceOf(alice)
-      let aliceUnlockContractBalanceAfter = (await safeTokenLock.users(alice)).unlocked
-      let aliceUnlockStartAfter = (await safeTokenLock.users(alice)).unlockStart
-      let aliceUnlockEndAfter = (await safeTokenLock.users(alice)).unlockEnd
+      let aliceUnlockContractBalanceAfter = (await safeTokenLock.getUser(alice)).unlocked
+      let aliceUnlockStartAfter = (await safeTokenLock.getUser(alice)).unlockStart
+      let aliceUnlockEndAfter = (await safeTokenLock.getUser(alice)).unlockEnd
 
       // Checking Intermediate Token Balance & Unlocked Token details
       expect(aliceTokenBalanceAfter).to.equal(aliceTokenBalanceBefore + tokenToUnlock * BigInt(3))
@@ -565,27 +565,27 @@ describe('Lock', function () {
 
       index = 0
       for (; index < 3; index++) {
-        expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(0)
-        expect((await safeTokenLock.unlocks(index, alice)).unlockedAt).to.equal(0)
+        expect((await safeTokenLock.getUserUnlock(alice, index)).amount).to.equal(0)
+        expect((await safeTokenLock.getUserUnlock(alice, index)).unlockedAt).to.equal(0)
       }
       for (; index < 10; index++) {
-        expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(tokenToUnlock)
+        expect((await safeTokenLock.getUserUnlock(alice, index)).amount).to.equal(tokenToUnlock)
       }
 
       // Getting unlocked at timestamp and increasing timestamp
-      unlockedAt = (await safeTokenLock.unlocks(index - 1, alice)).unlockedAt
+      unlockedAt = (await safeTokenLock.getUserUnlock(alice, index - 1)).unlockedAt
       await time.increaseTo(unlockedAt)
 
       // Withdrawing tokens for next 3 unlocks (even though next 7 unlocks are matured.)
       aliceTokenBalanceBefore = await safeToken.balanceOf(alice)
-      aliceUnlockContractBalanceBefore = (await safeTokenLock.users(alice)).unlocked
-      aliceUnlockStartBefore = (await safeTokenLock.users(alice)).unlockStart
-      aliceUnlockEndBefore = (await safeTokenLock.users(alice)).unlockEnd
+      aliceUnlockContractBalanceBefore = (await safeTokenLock.getUser(alice)).unlocked
+      aliceUnlockStartBefore = (await safeTokenLock.getUser(alice)).unlockStart
+      aliceUnlockEndBefore = (await safeTokenLock.getUser(alice)).unlockEnd
       await safeTokenLock.connect(alice).withdraw(3)
       aliceTokenBalanceAfter = await safeToken.balanceOf(alice)
-      aliceUnlockContractBalanceAfter = (await safeTokenLock.users(alice)).unlocked
-      aliceUnlockStartAfter = (await safeTokenLock.users(alice)).unlockStart
-      aliceUnlockEndAfter = (await safeTokenLock.users(alice)).unlockEnd
+      aliceUnlockContractBalanceAfter = (await safeTokenLock.getUser(alice)).unlocked
+      aliceUnlockStartAfter = (await safeTokenLock.getUser(alice)).unlockStart
+      aliceUnlockEndAfter = (await safeTokenLock.getUser(alice)).unlockEnd
 
       // Checking Intermediate Token Balance & Unlocked Token details
       expect(aliceTokenBalanceAfter).to.equal(aliceTokenBalanceBefore + tokenToUnlock * BigInt(3))
@@ -595,11 +595,11 @@ describe('Lock', function () {
 
       index = 0
       for (; index < 6; index++) {
-        expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(0)
-        expect((await safeTokenLock.unlocks(index, alice)).unlockedAt).to.equal(0)
+        expect((await safeTokenLock.getUserUnlock(alice, index)).amount).to.equal(0)
+        expect((await safeTokenLock.getUserUnlock(alice, index)).unlockedAt).to.equal(0)
       }
       for (; index < 10; index++) {
-        expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(tokenToUnlock)
+        expect((await safeTokenLock.getUserUnlock(alice, index)).amount).to.equal(tokenToUnlock)
       }
       expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToLock - tokenToUnlock * BigInt(6))
     })
@@ -623,19 +623,19 @@ describe('Lock', function () {
       }
 
       // Getting unlocked at timestamp and increasing timestamp
-      let unlockedAt = (await safeTokenLock.unlocks(5, alice)).unlockedAt
+      let unlockedAt = (await safeTokenLock.getUserUnlock(alice, 5)).unlockedAt
       await time.increaseTo(unlockedAt)
 
       // Withdrawing tokens for first 3 unlocks (even though 5 unlocks are matured.)
       let aliceTokenBalanceBefore = await safeToken.balanceOf(alice)
-      let aliceUnlockContractBalanceBefore = (await safeTokenLock.users(alice)).unlocked
-      let aliceUnlockStartBefore = (await safeTokenLock.users(alice)).unlockStart
-      let aliceUnlockEndBefore = (await safeTokenLock.users(alice)).unlockEnd
+      let aliceUnlockContractBalanceBefore = (await safeTokenLock.getUser(alice)).unlocked
+      let aliceUnlockStartBefore = (await safeTokenLock.getUser(alice)).unlockStart
+      let aliceUnlockEndBefore = (await safeTokenLock.getUser(alice)).unlockEnd
       await safeTokenLock.connect(alice).withdraw(3)
       let aliceTokenBalanceAfter = await safeToken.balanceOf(alice)
-      let aliceUnlockContractBalanceAfter = (await safeTokenLock.users(alice)).unlocked
-      let aliceUnlockStartAfter = (await safeTokenLock.users(alice)).unlockStart
-      let aliceUnlockEndAfter = (await safeTokenLock.users(alice)).unlockEnd
+      let aliceUnlockContractBalanceAfter = (await safeTokenLock.getUser(alice)).unlocked
+      let aliceUnlockStartAfter = (await safeTokenLock.getUser(alice)).unlockStart
+      let aliceUnlockEndAfter = (await safeTokenLock.getUser(alice)).unlockEnd
 
       // Checking Intermediate Token Balance & Unlocked Token details
       expect(aliceTokenBalanceAfter).to.equal(aliceTokenBalanceBefore + tokenToUnlock * BigInt(3))
@@ -645,27 +645,27 @@ describe('Lock', function () {
 
       index = 0
       for (; index < 3; index++) {
-        expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(0)
-        expect((await safeTokenLock.unlocks(index, alice)).unlockedAt).to.equal(0)
+        expect((await safeTokenLock.getUserUnlock(alice, index)).amount).to.equal(0)
+        expect((await safeTokenLock.getUserUnlock(alice, index)).unlockedAt).to.equal(0)
       }
       for (; index < 10; index++) {
-        expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(tokenToUnlock)
+        expect((await safeTokenLock.getUserUnlock(alice, index)).amount).to.equal(tokenToUnlock)
       }
 
       // Getting unlocked at timestamp and increasing timestamp
-      unlockedAt = (await safeTokenLock.unlocks(index - 1, alice)).unlockedAt
+      unlockedAt = (await safeTokenLock.getUserUnlock(alice, index - 1)).unlockedAt
       await time.increaseTo(unlockedAt)
 
       // Withdrawing tokens for next all matured unlocks (next 7 unlocks are matured.)
       aliceTokenBalanceBefore = await safeToken.balanceOf(alice)
-      aliceUnlockContractBalanceBefore = (await safeTokenLock.users(alice)).unlocked
-      aliceUnlockStartBefore = (await safeTokenLock.users(alice)).unlockStart
-      aliceUnlockEndBefore = (await safeTokenLock.users(alice)).unlockEnd
+      aliceUnlockContractBalanceBefore = (await safeTokenLock.getUser(alice)).unlocked
+      aliceUnlockStartBefore = (await safeTokenLock.getUser(alice)).unlockStart
+      aliceUnlockEndBefore = (await safeTokenLock.getUser(alice)).unlockEnd
       await safeTokenLock.connect(alice).withdraw(0)
       aliceTokenBalanceAfter = await safeToken.balanceOf(alice)
-      aliceUnlockContractBalanceAfter = (await safeTokenLock.users(alice)).unlocked
-      aliceUnlockStartAfter = (await safeTokenLock.users(alice)).unlockStart
-      aliceUnlockEndAfter = (await safeTokenLock.users(alice)).unlockEnd
+      aliceUnlockContractBalanceAfter = (await safeTokenLock.getUser(alice)).unlocked
+      aliceUnlockStartAfter = (await safeTokenLock.getUser(alice)).unlockStart
+      aliceUnlockEndAfter = (await safeTokenLock.getUser(alice)).unlockEnd
 
       // Checking Intermediate Token Balance & Unlocked Token details
       expect(aliceTokenBalanceAfter).to.equal(aliceTokenBalanceBefore + tokenToUnlock * BigInt(7))
@@ -675,8 +675,8 @@ describe('Lock', function () {
 
       index = 0
       for (; index < 10; index++) {
-        expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(0)
-        expect((await safeTokenLock.unlocks(index, alice)).unlockedAt).to.equal(0)
+        expect((await safeTokenLock.getUserUnlock(alice, index)).amount).to.equal(0)
+        expect((await safeTokenLock.getUserUnlock(alice, index)).unlockedAt).to.equal(0)
       }
       expect(await safeTokenLock.totalBalance(alice)).to.equal(0)
     })
@@ -700,19 +700,19 @@ describe('Lock', function () {
       }
 
       // Getting unlocked at timestamp and increasing timestamp
-      const unlockedAt = (await safeTokenLock.unlocks(index - 1, alice)).unlockedAt
+      const unlockedAt = (await safeTokenLock.getUserUnlock(alice, index - 1)).unlockedAt
       await time.increaseTo(unlockedAt)
 
       // Withdrawing tokens
       const aliceTokenBalanceBefore = await safeToken.balanceOf(alice)
-      const aliceUnlockContractBalanceBefore = (await safeTokenLock.users(alice)).unlocked
-      const aliceUnlockStartBefore = (await safeTokenLock.users(alice)).unlockStart
-      const aliceUnlockEndBefore = (await safeTokenLock.users(alice)).unlockEnd
+      const aliceUnlockContractBalanceBefore = (await safeTokenLock.getUser(alice)).unlocked
+      const aliceUnlockStartBefore = (await safeTokenLock.getUser(alice)).unlockStart
+      const aliceUnlockEndBefore = (await safeTokenLock.getUser(alice)).unlockEnd
       await safeTokenLock.connect(alice).withdraw(10)
       const aliceTokenBalanceAfter = await safeToken.balanceOf(alice)
-      const aliceUnlockContractBalanceAfter = (await safeTokenLock.users(alice)).unlocked
-      const aliceUnlockStartAfter = (await safeTokenLock.users(alice)).unlockStart
-      const aliceUnlockEndAfter = (await safeTokenLock.users(alice)).unlockEnd
+      const aliceUnlockContractBalanceAfter = (await safeTokenLock.getUser(alice)).unlocked
+      const aliceUnlockStartAfter = (await safeTokenLock.getUser(alice)).unlockStart
+      const aliceUnlockEndAfter = (await safeTokenLock.getUser(alice)).unlockEnd
 
       // Checking Final Token Balance & Unlocked Token details
       expect(aliceTokenBalanceAfter).to.equal(aliceTokenBalanceBefore + tokenToUnlock * BigInt(index))
@@ -722,8 +722,8 @@ describe('Lock', function () {
 
       index = 0
       for (; index < 5; index++) {
-        expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(0)
-        expect((await safeTokenLock.unlocks(index, alice)).unlockedAt).to.equal(0)
+        expect((await safeTokenLock.getUserUnlock(alice, index)).amount).to.equal(0)
+        expect((await safeTokenLock.getUserUnlock(alice, index)).unlockedAt).to.equal(0)
       }
     })
 
@@ -747,19 +747,19 @@ describe('Lock', function () {
       }
 
       // Getting unlocked at timestamp and increasing timestamp
-      const unlockedAt = (await safeTokenLock.unlocks(index / 2 - 1, alice)).unlockedAt
+      const unlockedAt = (await safeTokenLock.getUserUnlock(alice, index / 2 - 1)).unlockedAt
       await time.increaseTo(unlockedAt) // Only unlocking half of the unlock operations
 
       // Withdrawing tokens
       const aliceTokenBalanceBefore = await safeToken.balanceOf(alice)
-      const aliceUnlockContractBalanceBefore = (await safeTokenLock.users(alice)).unlocked
-      const aliceUnlockStartBefore = (await safeTokenLock.users(alice)).unlockStart
-      const aliceUnlockEndBefore = (await safeTokenLock.users(alice)).unlockEnd
+      const aliceUnlockContractBalanceBefore = (await safeTokenLock.getUser(alice)).unlocked
+      const aliceUnlockStartBefore = (await safeTokenLock.getUser(alice)).unlockStart
+      const aliceUnlockEndBefore = (await safeTokenLock.getUser(alice)).unlockEnd
       await safeTokenLock.connect(alice).withdraw(10)
       const aliceTokenBalanceAfter = await safeToken.balanceOf(alice)
-      const aliceUnlockContractBalanceAfter = (await safeTokenLock.users(alice)).unlocked
-      const aliceUnlockStartAfter = (await safeTokenLock.users(alice)).unlockStart
-      const aliceUnlockEndAfter = (await safeTokenLock.users(alice)).unlockEnd
+      const aliceUnlockContractBalanceAfter = (await safeTokenLock.getUser(alice)).unlocked
+      const aliceUnlockStartAfter = (await safeTokenLock.getUser(alice)).unlockStart
+      const aliceUnlockEndAfter = (await safeTokenLock.getUser(alice)).unlockEnd
 
       // Checking Final Token Balance & Unlocked Token details
       expect(aliceTokenBalanceAfter).to.equal(aliceTokenBalanceBefore + tokenToUnlock * BigInt(index / 2))
@@ -769,11 +769,11 @@ describe('Lock', function () {
 
       index = 0
       for (; index < 5; index++) {
-        expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(0)
-        expect((await safeTokenLock.unlocks(index, alice)).unlockedAt).to.equal(0)
+        expect((await safeTokenLock.getUserUnlock(alice, index)).amount).to.equal(0)
+        expect((await safeTokenLock.getUserUnlock(alice, index)).unlockedAt).to.equal(0)
       }
       for (; index < 10; index++) {
-        expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(tokenToUnlock)
+        expect((await safeTokenLock.getUserUnlock(alice, index)).amount).to.equal(tokenToUnlock)
       }
     })
 
@@ -797,19 +797,19 @@ describe('Lock', function () {
       }
 
       // Getting unlocked at timestamp and increasing timestamp
-      const unlockedAt = (await safeTokenLock.unlocks(index / 2 - 1, alice)).unlockedAt
+      const unlockedAt = (await safeTokenLock.getUserUnlock(alice, index / 2 - 1)).unlockedAt
       await time.increaseTo(unlockedAt) // Only unlocking half of the unlock operations
 
       // Withdrawing tokens
       const aliceTokenBalanceBefore = await safeToken.balanceOf(alice)
-      const aliceUnlockContractBalanceBefore = (await safeTokenLock.users(alice)).unlocked
-      const aliceUnlockStartBefore = (await safeTokenLock.users(alice)).unlockStart
-      const aliceUnlockEndBefore = (await safeTokenLock.users(alice)).unlockEnd
+      const aliceUnlockContractBalanceBefore = (await safeTokenLock.getUser(alice)).unlocked
+      const aliceUnlockStartBefore = (await safeTokenLock.getUser(alice)).unlockStart
+      const aliceUnlockEndBefore = (await safeTokenLock.getUser(alice)).unlockEnd
       await safeTokenLock.connect(alice).withdraw(3)
       const aliceTokenBalanceAfter = await safeToken.balanceOf(alice)
-      const aliceUnlockContractBalanceAfter = (await safeTokenLock.users(alice)).unlocked
-      const aliceUnlockStartAfter = (await safeTokenLock.users(alice)).unlockStart
-      const aliceUnlockEndAfter = (await safeTokenLock.users(alice)).unlockEnd
+      const aliceUnlockContractBalanceAfter = (await safeTokenLock.getUser(alice)).unlocked
+      const aliceUnlockStartAfter = (await safeTokenLock.getUser(alice)).unlockStart
+      const aliceUnlockEndAfter = (await safeTokenLock.getUser(alice)).unlockEnd
 
       // Checking Final Token Balance & Unlocked Token details
       expect(aliceTokenBalanceAfter).to.equal(aliceTokenBalanceBefore + tokenToUnlock * 3n)
@@ -819,11 +819,11 @@ describe('Lock', function () {
 
       index = 0
       for (; index < 3; index++) {
-        expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(0)
-        expect((await safeTokenLock.unlocks(index, alice)).unlockedAt).to.equal(0)
+        expect((await safeTokenLock.getUserUnlock(alice, index)).amount).to.equal(0)
+        expect((await safeTokenLock.getUserUnlock(alice, index)).unlockedAt).to.equal(0)
       }
       for (; index < 10; index++) {
-        expect((await safeTokenLock.unlocks(index, alice)).amount).to.equal(tokenToUnlock)
+        expect((await safeTokenLock.getUserUnlock(alice, index)).amount).to.equal(tokenToUnlock)
       }
     })
 
@@ -846,27 +846,27 @@ describe('Lock', function () {
       await safeTokenLock.connect(alice).unlock(tokenToUnlock)
 
       // Getting unlocked at timestamp and increasing timestamp
-      const unlockedAt = (await safeTokenLock.unlocks(0, alice)).unlockedAt
+      const unlockedAt = (await safeTokenLock.getUserUnlock(alice, 0)).unlockedAt
       await time.increaseTo(unlockedAt)
 
       // Withdrawing tokens
       const aliceTokenBalanceBefore = await safeToken.balanceOf(alice)
-      const aliceUnlockContractBalanceBefore = (await safeTokenLock.users(alice)).unlocked
-      const aliceUnlockStartBefore = (await safeTokenLock.users(alice)).unlockStart
-      const aliceUnlockEndBefore = (await safeTokenLock.users(alice)).unlockEnd
+      const aliceUnlockContractBalanceBefore = (await safeTokenLock.getUser(alice)).unlocked
+      const aliceUnlockStartBefore = (await safeTokenLock.getUser(alice)).unlockStart
+      const aliceUnlockEndBefore = (await safeTokenLock.getUser(alice)).unlockEnd
       await safeTokenLock.connect(alice).withdraw(1)
       const aliceTokenBalanceAfter = await safeToken.balanceOf(alice)
-      const aliceUnlockContractBalanceAfter = (await safeTokenLock.users(alice)).unlocked
-      const aliceUnlockStartAfter = (await safeTokenLock.users(alice)).unlockStart
-      const aliceUnlockEndAfter = (await safeTokenLock.users(alice)).unlockEnd
+      const aliceUnlockContractBalanceAfter = (await safeTokenLock.getUser(alice)).unlocked
+      const aliceUnlockStartAfter = (await safeTokenLock.getUser(alice)).unlockStart
+      const aliceUnlockEndAfter = (await safeTokenLock.getUser(alice)).unlockEnd
 
       // Checking Token Balance & Unlocked Token details
       expect(aliceTokenBalanceAfter).to.equal(aliceTokenBalanceBefore + tokenToUnlock)
       expect(aliceUnlockContractBalanceAfter).to.equal(aliceUnlockContractBalanceBefore - tokenToUnlock)
       expect(aliceUnlockStartAfter).to.equal(aliceUnlockStartBefore + 1n)
       expect(aliceUnlockEndAfter).to.equal(aliceUnlockEndBefore)
-      expect((await safeTokenLock.unlocks(0, alice)).amount).to.equal(0)
-      expect((await safeTokenLock.unlocks(0, alice)).unlockedAt).to.equal(0)
+      expect((await safeTokenLock.getUserUnlock(alice, 0)).amount).to.equal(0)
+      expect((await safeTokenLock.getUserUnlock(alice, 0)).unlockedAt).to.equal(0)
       expect(await safeTokenLock.totalBalance(alice)).to.equal(0)
     })
 
@@ -886,7 +886,7 @@ describe('Lock', function () {
       await safeTokenLock.connect(alice).unlock(tokenToUnlock)
 
       // Getting unlocked at timestamp and increasing timestamp
-      const unlockedAt = (await safeTokenLock.unlocks(0, alice)).unlockedAt
+      const unlockedAt = (await safeTokenLock.getUserUnlock(alice, 0)).unlockedAt
       await time.increaseTo(unlockedAt)
 
       // Withdrawing tokens
@@ -912,7 +912,7 @@ describe('Lock', function () {
       }
 
       // Getting unlocked at timestamp and increasing timestamp
-      const unlockedAt = (await safeTokenLock.unlocks(index - 1, alice)).unlockedAt
+      const unlockedAt = (await safeTokenLock.getUserUnlock(alice, index - 1)).unlockedAt
       await time.increaseTo(unlockedAt)
 
       // Withdrawing tokens
@@ -953,7 +953,7 @@ describe('Lock', function () {
       expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToLock)
 
       // Getting unlocked at timestamp and increasing timestamp
-      const unlockedAt = (await safeTokenLock.unlocks(0, alice)).unlockedAt
+      const unlockedAt = (await safeTokenLock.getUserUnlock(alice, 0)).unlockedAt
       await time.increaseTo(unlockedAt)
 
       // Withdrawing tokens
@@ -1020,17 +1020,17 @@ describe('Lock', function () {
       // Locking tokens for Alice
       await safeToken.connect(alice).approve(safeTokenLock, tokenToLockAlice)
       await safeTokenLock.connect(alice).lock(tokenToLockAlice)
-      expect(await safeTokenLock.users(alice)).to.deep.equal([tokenToLockAlice, 0n, 0n, 0n])
+      expect(await safeTokenLock.getUser(alice)).to.deep.equal([tokenToLockAlice, 0n, 0n, 0n])
 
       // Unlocking tokens for Alice
       await safeTokenLock.connect(alice).unlock(tokenToUnlockAlice1)
-      expect(await safeTokenLock.users(alice)).to.deep.equal([tokenToLockAlice - tokenToUnlockAlice1, tokenToUnlockAlice1, 0n, 1n])
-      expect((await safeTokenLock.unlocks(0, alice)).amount).to.equal(tokenToUnlockAlice1)
+      expect(await safeTokenLock.getUser(alice)).to.deep.equal([tokenToLockAlice - tokenToUnlockAlice1, tokenToUnlockAlice1, 0n, 1n])
+      expect((await safeTokenLock.getUserUnlock(alice, 0)).amount).to.equal(tokenToUnlockAlice1)
 
       // Locking tokens for Bob
       await safeToken.connect(bob).approve(safeTokenLock, tokenToLockBob)
       await safeTokenLock.connect(bob).lock(tokenToLockBob)
-      expect(await safeTokenLock.users(bob)).to.deep.equal([tokenToLockBob, 0n, 0n, 0n])
+      expect(await safeTokenLock.getUser(bob)).to.deep.equal([tokenToLockBob, 0n, 0n, 0n])
 
       // Automine switched off to do transaction in the same timestamp
       await network.provider.send('evm_setAutomine', [false])
@@ -1049,57 +1049,57 @@ describe('Lock', function () {
       await tokenCollector.sendTransaction({ to: tokenCollector, value: ethers.parseEther('1') })
 
       // Checking updated status for Alice & Bob
-      expect(await safeTokenLock.users(bob)).to.deep.equal([tokenToLockBob - tokenToUnlockBob1, tokenToUnlockBob1, 0n, 1n])
-      expect((await safeTokenLock.unlocks(0, bob)).amount).to.equal(tokenToUnlockBob1)
-      expect(await safeTokenLock.users(alice)).to.deep.equal([
+      expect(await safeTokenLock.getUser(bob)).to.deep.equal([tokenToLockBob - tokenToUnlockBob1, tokenToUnlockBob1, 0n, 1n])
+      expect((await safeTokenLock.getUserUnlock(bob, 0)).amount).to.equal(tokenToUnlockBob1)
+      expect(await safeTokenLock.getUser(alice)).to.deep.equal([
         tokenToLockAlice - tokenToUnlockAlice1 - tokenToUnlockAlice2 - tokenToUnlockAlice3,
         tokenToUnlockAlice1 + tokenToUnlockAlice2 + tokenToUnlockAlice3,
         0n,
         3n,
       ])
-      expect((await safeTokenLock.unlocks(0, alice)).amount).to.equal(tokenToUnlockAlice1)
-      expect((await safeTokenLock.unlocks(1, alice)).amount).to.equal(tokenToUnlockAlice2)
-      expect((await safeTokenLock.unlocks(2, alice)).amount).to.equal(tokenToUnlockAlice3)
+      expect((await safeTokenLock.getUserUnlock(alice, 0)).amount).to.equal(tokenToUnlockAlice1)
+      expect((await safeTokenLock.getUserUnlock(alice, 1)).amount).to.equal(tokenToUnlockAlice2)
+      expect((await safeTokenLock.getUserUnlock(alice, 2)).amount).to.equal(tokenToUnlockAlice3)
 
       // Getting unlocked at timestamp and increasing timestamp
-      const unlockedAtT1 = (await safeTokenLock.unlocks(0, alice)).unlockedAt
+      const unlockedAtT1 = (await safeTokenLock.getUserUnlock(alice, 0)).unlockedAt
       await time.increaseTo(unlockedAtT1)
 
       // Withdrawing tokens for Alice
       await safeTokenLock.connect(alice).withdraw(1)
-      expect(await safeTokenLock.unlocks(0, alice)).to.deep.equal([0n, 0n])
+      expect(await safeTokenLock.getUserUnlock(alice, 0)).to.deep.equal([0n, 0n])
 
       // Unlocking tokens for Bob
       await safeTokenLock.connect(bob).unlock(tokenToUnlockBob2)
-      expect(await safeTokenLock.users(bob)).to.deep.equal([
+      expect(await safeTokenLock.getUser(bob)).to.deep.equal([
         tokenToLockBob - tokenToUnlockBob1 - tokenToUnlockBob2,
         tokenToUnlockBob1 + tokenToUnlockBob2,
         0n,
         2n,
       ])
-      expect((await safeTokenLock.unlocks(1, bob)).amount).to.equal(tokenToUnlockBob2)
+      expect((await safeTokenLock.getUserUnlock(bob, 1)).amount).to.equal(tokenToUnlockBob2)
 
       // Getting unlocked at timestamp and increasing timestamp
-      const unlockedAtT2 = (await safeTokenLock.unlocks(1, alice)).unlockedAt
+      const unlockedAtT2 = (await safeTokenLock.getUserUnlock(alice, 1)).unlockedAt
       await time.increaseTo(unlockedAtT2)
 
       // Withdrawing tokens for Alice
       await safeTokenLock.connect(alice).withdraw(0)
-      expect(await safeTokenLock.unlocks(1, alice)).to.deep.equal([0n, 0n])
-      expect(await safeTokenLock.unlocks(2, alice)).to.deep.equal([0n, 0n])
+      expect(await safeTokenLock.getUserUnlock(alice, 1)).to.deep.equal([0n, 0n])
+      expect(await safeTokenLock.getUserUnlock(alice, 2)).to.deep.equal([0n, 0n])
 
       // Withdrawing tokens for Bob
       await safeTokenLock.connect(bob).withdraw(0)
-      expect(await safeTokenLock.unlocks(0, bob)).to.deep.equal([0n, 0n])
+      expect(await safeTokenLock.getUserUnlock(bob, 0)).to.deep.equal([0n, 0n])
 
       // Checking Final State details
-      expect(await safeTokenLock.users(alice)).to.deep.equal([
+      expect(await safeTokenLock.getUser(alice)).to.deep.equal([
         tokenToLockAlice - tokenToUnlockAlice1 - tokenToUnlockAlice2 - tokenToUnlockAlice3,
         0n,
         3n,
         3n,
       ])
-      expect(await safeTokenLock.users(bob)).to.deep.equal([
+      expect(await safeTokenLock.getUser(bob)).to.deep.equal([
         tokenToLockBob - tokenToUnlockBob1 - tokenToUnlockBob2,
         tokenToUnlockBob2,
         1n,
