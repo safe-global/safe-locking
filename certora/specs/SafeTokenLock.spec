@@ -40,12 +40,9 @@ ghost mathint ghostUnlocked {
 
 rule doesNotAffectOtherUserBalance(method f) {
     env e;  
-    address user;
     address otherUser;
     calldataarg args;
-
-    require (otherUser != user);
-    require (e.msg.sender == user);
+    require (e.msg.sender != otherUser);
 
     uint96 otherUserBalanceBefore = totalBalance(e, otherUser);
     f(e,args);
