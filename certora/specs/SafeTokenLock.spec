@@ -1,7 +1,6 @@
 using SafeToken as safeToken;
 
 methods {
-
     // SafeTokenLock functions
     function lock(uint96) external returns(uint32);
     function unlock(uint32, uint96) external returns(bool);
@@ -13,7 +12,6 @@ methods {
     function getSafeTokenAddress() external returns(address) envfree;
     function getStartAndEnd(address userAddress) external returns(uint32, uint32) envfree;
     function safeToken.balanceOf(address) external returns(uint256) envfree;
-
 }
 
 ghost mapping(address => mathint) userUnlocks {
