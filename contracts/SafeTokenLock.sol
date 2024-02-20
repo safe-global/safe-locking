@@ -12,17 +12,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @custom:security-contact bounty@safe.global
  */
 contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
-    struct User {
-        uint96 locked; // Contains the total locked token by a particular user.
-        uint96 unlocked; // Contains the total unlocked token by a particular user.
-        uint32 unlockStart; // Zero or ID of Oldest unlock operation created which is yet to be withdrawn.
-        uint32 unlockEnd; // Next unlock Id = unlockEnd++
-    }
-    struct UnlockInfo {
-        uint96 amount; // For 1 Billion Safe Tokens, this is enough. 10 ** 27 < 2 ** 96
-        uint64 unlockedAt; // Valid until Year: 2554.
-    }
-
     /* solhint-disable var-name-mixedcase */
     IERC20 public immutable SAFE_TOKEN; // Safe Token Address.
     uint64 public immutable COOLDOWN_PERIOD; // Contains the cooldown period. Default will be 30 days.
@@ -138,11 +127,11 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
 
     /**
      * @dev A view function that returns the unlock information.
-     * @param userAddress Address of the user.
+     * @param holder Address of the user.
      * @param index A uint32 type indicating the unlock index for the given user address.
      * @return unlockInfo UnlockInfo struct containing information about the unlock.
      */
     function getUnlock(address holder, uint32 index) external view returns (UnlockInfo memory unlockInfo) {
-        unlockInfo = _unlocks[index][userAddress];
+        unlockInfo = _unlocks[index][holder];
     }
 }

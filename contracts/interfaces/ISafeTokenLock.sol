@@ -12,6 +12,17 @@ interface ISafeTokenLock {
     event Unlocked(address indexed holder, uint32 indexed index, uint96 amount);
     event Withdrawn(address indexed holder, uint32 indexed index, uint96 amount);
 
+    struct User {
+        uint96 locked; // Contains the total locked token by a particular user.
+        uint96 unlocked; // Contains the total unlocked token by a particular user.
+        uint32 unlockStart; // Zero or ID of Oldest unlock operation created which is yet to be withdrawn.
+        uint32 unlockEnd; // Next unlock Id = unlockEnd++
+    }
+    struct UnlockInfo {
+        uint96 amount; // For 1 Billion Safe Tokens, this is enough. 10 ** 27 < 2 ** 96
+        uint64 unlockedAt; // Valid until Year: 2554.
+    }
+
     /**
      * @notice Error indicating an attempt to use zero tokens when locking or unlocking.
      */
@@ -58,4 +69,19 @@ interface ISafeTokenLock {
      * @return amount The amount of (locked + to be unlocked + withdrawable) tokens of the holder.
      */
     function totalBalance(address holder) external returns (uint96 amount);
+
+    /**
+     * @dev A view function that returns information in the form of User struct.
+     * @param userAddress Address of the user.
+     * @return user User struct containing information of current.
+     */
+    function getUser(address userAddress) external view returns (User memory user);
+
+    /**
+     * @dev A view function that returns the unlock information.
+     * @param userAddress Address of the user.
+     * @param index A uint32 type indicating the unlock index for the given user address.
+     * @return unlockInfo UnlockInfo struct containing information about the unlock.
+     */
+    function getUnlock(address userAddress, uint32 index) external view returns (UnlockInfo memory unlockInfo);
 }
