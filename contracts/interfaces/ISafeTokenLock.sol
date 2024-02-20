@@ -79,9 +79,9 @@ interface ISafeTokenLock {
 
     /**
      * @dev A view function that returns the unlock information.
-     * @param userAddress Address of the user.
+     * @param holder Address of the user.
      * @param index A uint32 type indicating the unlock index for the given user address.
      * @return unlockInfo UnlockInfo struct containing information about the unlock.
      */
-    function getUnlock(address userAddress, uint32 index) external view returns (UnlockInfo memory unlockInfo);
+    function getUnlock(address holder, uint32 index) external view returns (UnlockInfo memory unlockInfo);
 }

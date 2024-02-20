@@ -117,19 +117,14 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
     }
 
     /**
-     * @dev A view function that returns information in the form of User struct.
-     * @param userAddress Address of the user.
-     * @return user User struct containing information of current.
+     * @inheritdoc ISafeTokenLock
      */
     function getUser(address userAddress) external view returns (User memory user) {
         user = _users[userAddress];
     }
 
     /**
-     * @dev A view function that returns the unlock information.
-     * @param holder Address of the user.
-     * @param index A uint32 type indicating the unlock index for the given user address.
-     * @return unlockInfo UnlockInfo struct containing information about the unlock.
+     * @inheritdoc ISafeTokenLock
      */
     function getUnlock(address holder, uint32 index) external view returns (UnlockInfo memory unlockInfo) {
         unlockInfo = _unlocks[index][holder];
