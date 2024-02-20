@@ -1,12 +1,16 @@
 # Safe Locking Contract
 
+## Introduction
+
+Safe locking contract facilitates locking Safe tokens. In exchange for locking tokens, users can earn rewards. The rewards would be calculated off-chain with a governance process. Users can lock and unlock tokens anytime and also withdraw after the `COOLDOWN_PERIOD` is over. The contract also provides admin controlled feature to recover ERC20 tokens other than Safe tokens.
+
 ## Contract
 
 ### Contract behaviour
 
 - The locking contract is designed for "continuous" locking (as opposed to a “discrete” locking mechanism). This means that:
-  - Tokens can be locked at any time
-  - Tokens can be unlocked at any time, where a transaction is issued to initiate the unlock and enter a “cool-down” period and a follow-up transaction is issued to withdraw the unlocked tokens after the cool-down period is over.
+  - Safe tokens can be locked at any time
+  - Safe tokens can be unlocked at any time, where a transaction is issued to initiate the unlock and enter a “cool-down” period and a follow-up transaction is issued to withdraw the unlocked tokens after the cool-down period is over.
 - The current specification considers locking age to be computed in a First-In-First-Out order (Calculated offchain). For example, a user:
 
   1.  Locks **100 SAFE** on **block** **1000000**
@@ -18,7 +22,7 @@
   - **25 SAFE** locked for **1000 blocks**
   - **50 SAFE** locked for **500 blocks**
 
-- `withdraw(...)` is defined to withdraw all matured unlocks. This is an `O(n)` operation (where `n` is the number of matured unlocks). In order to support more deterministic gas usage, a `withdraw(maxUnlocks)` function is also provided to withdraw up to `maxUnlocks` of the oldest matured unlocks. For example, `withdraw(1)` can be used to withdraw only the oldest unlock if it is already matured, which is an `O(1)` operation.
+- `withdraw(...)` is defined to withdraw all matured unlocks (unlocks whose unlock time is greater than `block.timestamp`). This is an `O(n)` operation (where `n` is the number of matured unlocks). In order to support more deterministic gas usage, a `withdraw(maxUnlocks)` function is also provided to withdraw up to `maxUnlocks` of the oldest matured unlocks. For example, `withdraw(1)` can be used to withdraw only the oldest unlock if it is already matured, which is an `O(1)` operation.
 - `totalBalance` returns the total `SAFE` token balance belonging to the `holder` within the locking contract, this includes locked tokens, unlocked tokens, and ready to withdraw tokens.
 - Full accounting of locked tokens per user can be computable based on emitted events.
 - The total `$SAFE` token balance in the locking contract belonging to any user can be readable on-chain or via a standard `eth_call` JSON RPC request. This MUST be made available by the `totalBalance(...)` contract method.
@@ -33,7 +37,7 @@
 - `Withdrawable`: This is the state of unlocked tokens ready to be withdrawn completely by the user. The tokens can remain in the contract indefinitely in this state, until the user withdraws.
 - `Withdrawn`: This state is atomic, and can only be tracked on-chain based on logs emitted during the withdraw operation.
 
-Note: Token enters the contract in `Locked` state (unless tokens are transferred directly without calling the `lock(...)`) and exits the contract from a `Withdrawable` state using the `withdraw(...)` to `Withdrawn` state as mentioned above.
+**Note**: Token enters the contract in `Locked` state (unless tokens are transferred directly without calling the `lock(...)`) and exits the contract from a `Withdrawable` state using the `withdraw(...)` to `Withdrawn` state as mentioned above.
 
 ### Contract State Change Explanation
 
@@ -55,6 +59,8 @@ Basic assumptions like `X1 > X2 + X3 + X4` and `Y1 > Y2 + Y3` are applicable. Fo
 ### Contract Implementation Details
 
 Contract implementation details can be found in the [docs folder](./docs/Implementation.md).
+
+**Note**: Any Safe tokens sent to the contract other than use of `lock(...)` function cannot be recovered and will be lost.
 
 ### Contract Sequence Diagram
 
