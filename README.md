@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Safe locking contract facilitates locking Safe tokens. In exchange for locking tokens, users can earn rewards. The rewards would be calculated off-chain with a governance process. Users can lock and unlock tokens anytime and also withdraw after the `COOLDOWN_PERIOD` is over. The contract also provides admin controlled feature to recover ERC20 tokens other than Safe tokens.
+Safe locking contract facilitates locking Safe tokens. In exchange for locking tokens, users can earn rewards. The rewards would be calculated off-chain with a governance process. Users can lock and unlock tokens anytime and also withdraw after the `COOLDOWN_PERIOD` is over. The contract also provides feature controlled by the admin address to recover ERC20 tokens other than Safe tokens.
 
 ## Contract
 
@@ -62,7 +62,7 @@ Contract implementation details can be found in the [docs folder](./docs/Impleme
 
 **Note**: Any Safe tokens sent to the contract other than use of `lock(...)` function cannot be recovered and will be lost.
 
-### Contract Sequence Diagram
+### User Actions Sequence Diagram
 
 ```mermaid
 sequenceDiagram
