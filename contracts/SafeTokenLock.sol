@@ -28,8 +28,8 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
     uint64 public immutable COOLDOWN_PERIOD; // Contains the cooldown period. Default will be 30 days.
     /* solhint-enable var-name-mixedcase */
 
-    mapping(address => User) internal users; // Contains the address => user info struct.
-    mapping(uint32 => mapping(address => UnlockInfo)) internal unlocks; // Contains the Unlock id => user => Unlock Info struct.
+    mapping(address => User) internal _users; // Contains the address => user info struct.
+    mapping(uint32 => mapping(address => UnlockInfo)) internal _unlocks; // Contains the Unlock id => user => Unlock Info struct.
 
     /**
      * @notice Error indicating an attempt to use the zero address as Safe Token address.
@@ -67,7 +67,7 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
         if (amount == 0) revert InvalidTokenAmount();
         SAFE_TOKEN.transferFrom(msg.sender, address(this), amount);
 
-        users[msg.sender].locked += amount;
+        _users[msg.sender].locked += amount;
         emit Locked(msg.sender, amount);
     }
 
@@ -77,11 +77,11 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
     function unlock(uint96 amount) external returns (uint32 index) {
         if (amount == 0) revert InvalidTokenAmount();
 
-        User memory user = users[msg.sender];
+        User memory user = _users[msg.sender];
         if (user.locked < amount) revert UnlockAmountExceeded();
 
-        unlocks[user.unlockEnd][msg.sender] = UnlockInfo(amount, uint64(block.timestamp) + COOLDOWN_PERIOD);
-        users[msg.sender] = User(user.locked - amount, user.unlocked + amount, user.unlockStart, user.unlockEnd + 1);
+        _unlocks[user.unlockEnd][msg.sender] = UnlockInfo(amount, uint64(block.timestamp) + COOLDOWN_PERIOD);
+        _users[msg.sender] = User(user.locked - amount, user.unlocked + amount, user.unlockStart, user.unlockEnd + 1);
         index = user.unlockEnd;
 
         emit Unlocked(msg.sender, index, amount);
@@ -90,22 +90,22 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
     /**
      * @inheritdoc ISafeTokenLock
      */
-    function withdraw(uint32 maxUnlocks) external returns (uint96 amount) {
-        User memory user = users[msg.sender];
+    function withdraw(uint32 max_unlocks) external returns (uint96 amount) {
+        User memory user = _users[msg.sender];
         uint32 index = user.unlockStart;
-        uint32 unlockEnd = user.unlockEnd > index + maxUnlocks && maxUnlocks != 0 ? index + maxUnlocks : user.unlockEnd;
+        uint32 unlockEnd = user.unlockEnd > index + max_unlocks && max_unlocks != 0 ? index + max_unlocks : user.unlockEnd;
 
         for (; index < unlockEnd; index++) {
-            UnlockInfo memory unlockInfo = unlocks[index][msg.sender];
+            UnlockInfo memory unlockInfo = _unlocks[index][msg.sender];
             if (unlockInfo.unlockedAt > block.timestamp) break;
 
             amount += unlockInfo.amount;
             emit Withdrawn(msg.sender, index, unlockInfo.amount);
-            delete unlocks[index][msg.sender];
+            delete _unlocks[index][msg.sender];
         }
 
         if (amount > 0) {
-            users[msg.sender] = User(user.locked, user.unlocked - amount, index, user.unlockEnd);
+            _users[msg.sender] = User(user.locked, user.unlocked - amount, index, user.unlockEnd);
             SAFE_TOKEN.transfer(msg.sender, uint256(amount));
         }
     }
@@ -114,7 +114,7 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
      * @inheritdoc ISafeTokenLock
      */
     function totalBalance(address holder) external view returns (uint96 amount) {
-        return users[holder].locked + users[holder].unlocked;
+        return _users[holder].locked + _users[holder].unlocked;
     }
 
     /**
@@ -127,11 +127,22 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
         token.transfer(msg.sender, amount);
     }
 
-    function getUser(address userAddress) external view returns (User memory) {
-        return users[userAddress];
+    /**
+     * @dev A view function that returns information in the form of User struct.
+     * @param userAddress Address of the user.
+     * @return user User struct containing information of current.
+     */
+    function getUser(address userAddress) external view returns (User memory user) {
+        user = _users[userAddress];
     }
 
-    function getUserUnlock(address userAddress, uint32 index) external view returns (UnlockInfo memory) {
-        return unlocks[index][userAddress];
+    /**
+     * @dev A view function that returns the unlock information.
+     * @param userAddress Address of the user.
+     * @param index A uint32 type indicating the unlock index for the given user address.
+     * @return unlockInfo UnlockInfo struct containting information about the unlock.
+     */
+    function getUserUnlock(address userAddress, uint32 index) external view returns (UnlockInfo memory unlockInfo) {
+        unlockInfo = _unlocks[index][userAddress];
     }
 }
