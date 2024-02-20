@@ -71,9 +71,9 @@ interface ISafeTokenLock {
     function totalBalance(address holder) external returns (uint96 amount);
 
     /**
-     * @dev A view function that returns information in the form of User struct.
+     * @notice Returns user information for the specified address.
      * @param holder Address of the user.
-     * @return user User struct containing information of current.
+     * @return user {User} struct containing information for the specified address.
      */
     function getUser(address holder) external view returns (User memory user);
 
