@@ -9,8 +9,8 @@ Safe locking contract facilitates locking Safe tokens. In exchange for locking t
 ### Contract behaviour
 
 - The locking contract is designed for "continuous" locking (as opposed to a “discrete” locking mechanism). This means that:
-  - Safe tokens can be locked at any time
-  - Safe tokens can be unlocked at any time, where a transaction is issued to initiate the unlock and enter a “cool-down” period and a follow-up transaction is issued to withdraw the unlocked tokens after the cool-down period is over.
+  - Tokens can be locked at any time
+  - Tokens can be unlocked at any time, where a transaction is issued to initiate the unlock and enter a “cool-down” period and a follow-up transaction is issued to withdraw the unlocked tokens after the cool-down period is over.
 - The current specification considers locking age to be computed in a First-In-First-Out order (Calculated offchain). For example, a user:
 
   1.  Locks **100 SAFE** on **block** **1000000**
@@ -60,7 +60,7 @@ Basic assumptions like `X1 > X2 + X3 + X4` and `Y1 > Y2 + Y3` are applicable. Fo
 
 Contract implementation details can be found in the [docs folder](./docs/Implementation.md).
 
-**Note**: Any Safe tokens sent to the contract other than use of `lock(...)` function cannot be recovered and will be lost.
+**Note**: Any Safe tokens sent to the contract other than use of `lock(...)` function cannot be recovered and will be deposited to the contract forever.
 
 ### User Actions Sequence Diagram
 
