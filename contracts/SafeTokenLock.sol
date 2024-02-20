@@ -142,7 +142,7 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
      * @param index A uint32 type indicating the unlock index for the given user address.
      * @return unlockInfo UnlockInfo struct containing information about the unlock.
      */
-    function getUserUnlock(address userAddress, uint32 index) external view returns (UnlockInfo memory unlockInfo) {
+    function getUnlock(address holder, uint32 index) external view returns (UnlockInfo memory unlockInfo) {
         unlockInfo = _unlocks[index][userAddress];
     }
 }
