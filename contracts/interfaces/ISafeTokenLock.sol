@@ -8,10 +8,6 @@ pragma solidity 0.8.23;
  * @custom:security-contact bounty@safe.global
  */
 interface ISafeTokenLock {
-    event Locked(address indexed holder, uint96 amount);
-    event Unlocked(address indexed holder, uint32 indexed index, uint96 amount);
-    event Withdrawn(address indexed holder, uint32 indexed index, uint96 amount);
-
     struct User {
         uint96 locked; // Contains the total locked token by a particular user.
         uint96 unlocked; // Contains the total unlocked token by a particular user.
@@ -22,6 +18,10 @@ interface ISafeTokenLock {
         uint96 amount; // For 1 Billion Safe Tokens, this is enough. 10 ** 27 < 2 ** 96
         uint64 unlockedAt; // Valid until Year: 2554.
     }
+
+    event Locked(address indexed holder, uint96 amount);
+    event Unlocked(address indexed holder, uint32 indexed index, uint96 amount);
+    event Withdrawn(address indexed holder, uint32 indexed index, uint96 amount);
 
     /**
      * @notice Error indicating an attempt to use zero tokens when locking or unlocking.
