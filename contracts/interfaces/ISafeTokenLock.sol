@@ -72,10 +72,10 @@ interface ISafeTokenLock {
 
     /**
      * @dev A view function that returns information in the form of User struct.
-     * @param userAddress Address of the user.
+     * @param holder Address of the user.
      * @return user User struct containing information of current.
      */
-    function getUser(address userAddress) external view returns (User memory user);
+    function getUser(address holder) external view returns (User memory user);
 
     /**
      * @dev A view function that returns the unlock information.

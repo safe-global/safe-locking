@@ -109,8 +109,8 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
     /**
      * @inheritdoc ISafeTokenLock
      */
-    function getUser(address userAddress) external view returns (User memory user) {
-        user = _users[userAddress];
+    function getUser(address holder) external view returns (User memory user) {
+        user = _users[holder];
     }
 
     /**

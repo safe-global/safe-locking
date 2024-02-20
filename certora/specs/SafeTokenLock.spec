@@ -7,8 +7,8 @@ methods {
     function withdraw(uint32) external returns (uint96);
 
     // Harnessed functions
-    function getUser(address userAddress) external returns(SafeTokenLock.User memory) envfree;
-    function getUnlock(address userAddress, uint32 index) external returns(SafeTokenLock.UnlockInfo memory) envfree;
+    function getUser(address holder) external returns(ISafeTokenLock.User memory) envfree;
+    function getUnlock(address holder, uint32 index) external returns(ISafeTokenLock.UnlockInfo memory) envfree;
     function getSafeTokenAddress() external returns(address) envfree;
     function getStartAndEnd(address userAddress) external returns(uint32, uint32) envfree;
     function safeToken.balanceOf(address) external returns(uint256) envfree;
@@ -71,7 +71,7 @@ rule cannotWithdrawBeforeCooldown() {
 
     require start == i && end != i;
 
-    SafeTokenLock.UnlockInfo unlockInfo = getUnlock(e.msg.sender, i);
+    ISafeTokenLock.UnlockInfo unlockInfo = getUnlock(e.msg.sender, i);
     maturesAtTimestamp = unlockInfo.unlockedAt;
     amount = unlockInfo.amount;
     require maturesAtTimestamp > e.block.timestamp && amount > 0;
@@ -92,11 +92,11 @@ rule unlockTimeDoesNotChange(method f) {
     uint96 amount;
     address user;
 
-    SafeTokenLock.User user1 = getUser(user);
+    ISafeTokenLock.User user1 = getUser(user);
 
     require user1.unlockStart == i && user1.unlockEnd != i;
 
-    SafeTokenLock.UnlockInfo unlockInfo = getUnlock(user, i);
+    ISafeTokenLock.UnlockInfo unlockInfo = getUnlock(user, i);
 
     calldataarg args;
    
@@ -107,8 +107,8 @@ rule unlockTimeDoesNotChange(method f) {
 
     f(e, args);
 
-    SafeTokenLock.UnlockInfo unlockInfo2 = getUnlock(user, i);
-    SafeTokenLock.User user2 = getUser(user);
+    ISafeTokenLock.UnlockInfo unlockInfo2 = getUnlock(user, i);
+    ISafeTokenLock.User user2 = getUser(user);
 
     assert user1.unlockStart == user2.unlockStart;
     assert maturesAtTimestamp == to_mathint(unlockInfo2.unlockedAt);
