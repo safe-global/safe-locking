@@ -22,11 +22,11 @@ ghost mapping(address => mathint) userLocks {
     init_state axiom forall address X.userLocks[X] == 0;
 }
 
-hook Sload uint96 v currentContract.users[KEY address user].locked STORAGE {
+hook Sload uint96 v currentContract._users[KEY address user].locked STORAGE {
     require userLocks[user] == to_mathint(v);
 }
 
-hook Sload uint96 v currentContract.users[KEY address user].unlocked STORAGE { 
+hook Sload uint96 v currentContract._users[KEY address user].unlocked STORAGE { 
     require userUnlocks[user] == to_mathint(v);
 }
 
@@ -115,13 +115,13 @@ rule unlockTimeDoesNotChange(method f) {
 }
 
 // hook to update sum of locked tokens whenever user struct is updated
-hook Sstore SafeTokenLockHarness.users[KEY address user].locked uint96 value (uint96 old_value) STORAGE {
+hook Sstore SafeTokenLockHarness._users[KEY address user].locked uint96 value (uint96 old_value) STORAGE {
     ghostLocked = ghostLocked + (value - old_value);
     userLocks[user] = value;
 }
 
 // hook to update sum of unlocked tokens whenever user struct is updated
-hook Sstore SafeTokenLockHarness.users[KEY address key].unlocked uint96 value (uint96 old_value) STORAGE {
+hook Sstore SafeTokenLockHarness._users[KEY address key].unlocked uint96 value (uint96 old_value) STORAGE {
     ghostUnlocked = ghostUnlocked + (value - old_value);
     userUnlocks[key] = value;
 }
