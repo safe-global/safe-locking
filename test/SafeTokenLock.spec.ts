@@ -6,7 +6,7 @@ import { timestamp, transferToken } from './utils/execution'
 import { ZeroAddress } from 'ethers'
 import { isForkedNetwork } from '../src/utils/e2e'
 
-describe('Lock', function () {
+describe('SafeTokenLock', function () {
   const setupTests = deployments.createFixture(async ({ deployments }) => {
     await deployments.fixture()
     let safeTokenToTransfer
@@ -41,7 +41,7 @@ describe('Lock', function () {
 
       // Checking Safe Token Lock Initialization Values
       expect(await safeTokenLock.SAFE_TOKEN()).to.equal(safeToken)
-      expect(await safeTokenLock.COOLDOWN_PERIOD()).to.equal(cooldownPeriod) // 30 days
+      expect(await safeTokenLock.COOLDOWN_PERIOD()).to.equal(cooldownPeriod)
     })
 
     it('Should not deploy with zero address', async function () {
@@ -187,7 +187,7 @@ describe('Lock', function () {
       await safeTokenLock.connect(alice).unlock(tokenToUnlock)
 
       // Calculating expected unlockedAt timestamp
-      const currentTimestamp = BigInt(await timestamp())
+      const currentTimestamp = await timestamp()
       const cooldownPeriod = await safeTokenLock.COOLDOWN_PERIOD()
       const expectedUnlockedAt = currentTimestamp + cooldownPeriod
 
@@ -249,7 +249,7 @@ describe('Lock', function () {
         await safeTokenLock.connect(alice).unlock(tokenToUnlock)
 
         // Calculating expected unlockedAt timestamp
-        const expectedUnlockedAt = BigInt(await timestamp()) + cooldownPeriod
+        const expectedUnlockedAt = (await timestamp()) + cooldownPeriod
 
         // Checking Locked & Unlocked Token details
         expect((await safeTokenLock.getUser(alice)).locked).to.equal(currentLocked - tokenToUnlock)
@@ -286,12 +286,12 @@ describe('Lock', function () {
       await safeTokenLock.connect(alice).lock(tokenToLock)
 
       // Unlocking tokens
-      await safeTokenLock.connect(alice).unlock(tokenToUnlock)
+      const unlockTransaction = await safeTokenLock.connect(alice).unlock(tokenToUnlock)
 
       // Calculating expected unlockedAt timestamp
-      const currentTimestamp = BigInt(await timestamp())
+      const { timestamp: unlockTimestamp } = (await unlockTransaction.getBlock())!
       const cooldownPeriod = await safeTokenLock.COOLDOWN_PERIOD()
-      const expectedUnlockedAt = currentTimestamp + cooldownPeriod
+      const expectedUnlockedAt = BigInt(unlockTimestamp) + cooldownPeriod
 
       // Checking Locked & Unlocked Token details
       expect((await safeTokenLock.getUser(alice)).locked).to.equal(0)
@@ -362,12 +362,12 @@ describe('Lock', function () {
 
       // Unlocking tokens of Alice & calculating expected unlockedAt timestamp
       await safeTokenLock.connect(alice).unlock(tokenToUnlockAlice)
-      const currentTimestampAlice = BigInt(await timestamp())
+      const currentTimestampAlice = await timestamp()
       const expectedUnlockedAtAlice = currentTimestampAlice + cooldownPeriod
 
       // Unlocking tokens of Bob & calculating expected unlockedAt timestamp
       await safeTokenLock.connect(bob).unlock(tokenToUnlockBob)
-      const currentTimestampBob = BigInt(await timestamp())
+      const currentTimestampBob = await timestamp()
       const expectedUnlockedAtBob = currentTimestampBob + cooldownPeriod
 
       // Checking Unlocked Token details of Alice and Bob
@@ -394,11 +394,12 @@ describe('Lock', function () {
       await safeTokenLock.connect(alice).lock(tokenToLock)
 
       // Unlocking tokens
-      await safeTokenLock.connect(alice).unlock(tokenToUnlock)
+      const unlockTransaction = await safeTokenLock.connect(alice).unlock(tokenToUnlock)
+      const { timestamp: unlockTimestamp } = (await unlockTransaction.getBlock())!
+      const cooldownPeriod = await safeTokenLock.COOLDOWN_PERIOD()
 
       // Getting unlocked at timestamp and increasing timestamp
-      const unlockedAt = (await safeTokenLock.getUnlock(alice, 0)).unlockedAt
-      await time.increaseTo(unlockedAt)
+      await time.increaseTo(BigInt(unlockTimestamp) + cooldownPeriod)
 
       // Withdrawing tokens
       const aliceTokenBalanceBefore = await safeToken.balanceOf(alice)

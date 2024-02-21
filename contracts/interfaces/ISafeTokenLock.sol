@@ -33,6 +33,24 @@ interface ISafeTokenLock {
      */
     error UnlockAmountExceeded();
 
+    /* solhint-disable func-name-mixedcase */
+
+    /**
+     * @notice Gets the configured Safe token for locking contract.
+     * @return safeToken The address of the Safe token.
+     * @dev The Safe token address is immutable and does not change.
+     */
+    function SAFE_TOKEN() external view returns (address safeToken);
+
+    /**
+     * @notice Gets the configured cooldown period for locking contract.
+     * @return cooldownPeriod The cooldown period in seconds.
+     * @dev The cooldown period is immutable and does not change.
+     */
+    function COOLDOWN_PERIOD() external view returns (uint64 cooldownPeriod);
+
+    /* solhint-enable func-name-mixedcase */
+
     /**
      * @notice Locks the specified amount of tokens.
      * @param amount The amount of tokens to lock. The function will revert with {InvalidTokenAmount} in case `amount` is 0.
@@ -48,7 +66,7 @@ interface ISafeTokenLock {
      *               The function will revert with custom error {UnlockAmountExceeded} in case `amount` is greater than the locked amount.
      * @return index The index of the unlock operation.
      * @dev Does not allow unlocking zero tokens.
-     * Gas Usage (major): SLOAD & SSTORE users[msg.sender] + SLOAD COOLDOWN_PERIOD + SSTORE UnlockInfo + Emit Event
+     * Gas Usage (major): SLOAD & SSTORE users[msg.sender] + SSTORE UnlockInfo + Emit Event
      */
     function unlock(uint96 amount) external returns (uint32 index);
 
@@ -58,7 +76,7 @@ interface ISafeTokenLock {
      * @return amount The amount of tokens withdrawn.
      * @dev Calling this function with zero `maxUnlocks` will result in withdrawing all matured unlock operations.
      * Gas Usage (major usage only): SLOAD users[caller] + n SLOAD unlocks[i][caller] + n Event Emits
-     * + n Zero assignment SSTORE unlocks[i][caller] + SSTORE users[caller] + SLOAD SAFE_TOKEN + Token Transfer
+     * + n Zero assignment SSTORE unlocks[i][caller] + SSTORE users[caller] + Token Transfer
      * where n can be as high as max(`unlockEnd - unlockStart`, `maxUnlocks`).
      */
     function withdraw(uint32 maxUnlocks) external returns (uint96 amount);

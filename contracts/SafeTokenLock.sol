@@ -12,14 +12,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @custom:security-contact bounty@safe.global
  */
 contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
-    /* solhint-disable var-name-mixedcase */
-    IERC20 public immutable SAFE_TOKEN; // Safe Token Address.
-    uint64 public immutable COOLDOWN_PERIOD; // Contains the cooldown period. Default will be 30 days.
-    /* solhint-enable var-name-mixedcase */
-
-    mapping(address => User) internal _users; // Contains the address => user info struct.
-    mapping(uint32 => mapping(address => UnlockInfo)) internal _unlocks; // Contains the Unlock id => user => Unlock Info struct.
-
     /**
      * @notice Error indicating an attempt to use the zero address as Safe Token address.
      */
@@ -36,17 +28,30 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
     error CannotRecoverSafeToken();
 
     /**
+     * @inheritdoc ISafeTokenLock
+     */
+    address public immutable SAFE_TOKEN;
+
+    /**
+     * @inheritdoc ISafeTokenLock
+     */
+    uint64 public immutable COOLDOWN_PERIOD;
+
+    mapping(address => User) internal _users; // Contains the address => user info struct.
+    mapping(uint32 => mapping(address => UnlockInfo)) internal _unlocks; // Contains the Unlock id => user => Unlock Info struct.
+
+    /**
      * @notice Sets the immutables of the contract and the initial owner.
      * @param initialOwner Initial owner of the contract.
-     * @param safeTokenAddress Address of the Safe token. Passing address(0) will revert with {InvalidSafeTokenAddress}.
-     * @param cooldownPeriod A uint32 type indicating the minimum period in seconds after which Safe token withdrawal can be performed. Passing zero will revert with {InvalidTokenAmount}.
+     * @param safeToken Address of the Safe token. Passing address(0) will revert with {InvalidSafeTokenAddress}.
+     * @param cooldownPeriod The minimum period in seconds after which Safe token withdrawal can be performed. Passing zero will revert with {InvalidTokenAmount}.
      */
-    constructor(address initialOwner, address safeTokenAddress, uint32 cooldownPeriod) Ownable(initialOwner) {
-        if (safeTokenAddress == address(0)) revert InvalidSafeTokenAddress();
+    constructor(address initialOwner, address safeToken, uint32 cooldownPeriod) Ownable(initialOwner) {
+        if (safeToken == address(0)) revert InvalidSafeTokenAddress();
         if (cooldownPeriod == 0) revert InvalidCooldownPeriod();
 
-        SAFE_TOKEN = IERC20(safeTokenAddress); // Safe Token Contract Address
-        COOLDOWN_PERIOD = cooldownPeriod; // Cooldown period. Expected value to be passed is 30 days in seconds.
+        SAFE_TOKEN = safeToken;
+        COOLDOWN_PERIOD = cooldownPeriod;
     }
 
     /**
@@ -54,7 +59,7 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
      */
     function lock(uint96 amount) external {
         if (amount == 0) revert InvalidTokenAmount();
-        SAFE_TOKEN.transferFrom(msg.sender, address(this), amount);
+        IERC20(SAFE_TOKEN).transferFrom(msg.sender, address(this), amount);
 
         _users[msg.sender].locked += amount;
         emit Locked(msg.sender, amount);
@@ -95,7 +100,7 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
 
         if (amount > 0) {
             _users[msg.sender] = User(user.locked, user.unlocked - amount, index, user.unlockEnd);
-            SAFE_TOKEN.transfer(msg.sender, uint256(amount));
+            IERC20(SAFE_TOKEN).transfer(msg.sender, uint256(amount));
         }
     }
 
@@ -122,11 +127,11 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
 
     /**
      * @dev Transfers the specified amount of tokens from the contract to the owner. Only the owner can call this function.
-     * @param token Address of the token to be recovered. The function will revert with {CannotRecoverSafeToken} in case `token` is {SAFE_TOKEN}.
+     * @param token Address of the token to be recovered. The function will revert with {CannotRecoverSafeToken} in case `token` is {safeToken}.
      * @param amount The amount of tokens to transfer.
      */
-    function recoverERC20(IERC20 token, uint256 amount) external onlyOwner {
+    function recoverERC20(address token, uint256 amount) external onlyOwner {
         if (token == SAFE_TOKEN) revert CannotRecoverSafeToken();
-        token.transfer(msg.sender, amount);
+        IERC20(token).transfer(msg.sender, amount);
     }
 }
