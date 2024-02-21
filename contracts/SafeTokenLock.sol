@@ -12,7 +12,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @custom:security-contact bounty@safe.global
  */
 contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
-
     /* solhint-disable var-name-mixedcase */
     IERC20 public immutable SAFE_TOKEN; // Safe Token Address.
     uint64 public immutable COOLDOWN_PERIOD; // Contains the cooldown period. Default will be 30 days.
