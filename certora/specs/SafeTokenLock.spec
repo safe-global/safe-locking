@@ -1,3 +1,5 @@
+using SafeToken as safeTokenContract;
+
 methods {
     // SafeTokenLock functions
     function lock(uint96) external returns(uint32);
@@ -8,7 +10,9 @@ methods {
 
     // Harnessed functions
     function getStartAndEnd(address userAddress) external returns(uint32, uint32) envfree;
-    function SafeToken.balanceOf(address) external returns(uint256) envfree;
+
+    // SafeToken functions
+    function safeTokenContract.balanceOf(address) external returns(uint256) envfree;
 }
 
 ghost mapping(address => mathint) userUnlocks {
@@ -48,11 +52,11 @@ rule doesNotAffectOtherUserBalance(method f) {
 
 rule cannotWithdrawMoreThanUnlocked() {
     env e;
-    uint256 balanceBefore = SafeToken.balanceOf(e, e.msg.sender);
+    uint256 balanceBefore = safeTokenContract.balanceOf(e, e.msg.sender);
     mathint beforeWithdraw = userUnlocks[e.msg.sender];
     withdraw(e, 0);
     require !lastReverted;
-    uint256 balanceAfter = SafeToken.balanceOf(e, e.msg.sender);
+    uint256 balanceAfter = safeTokenContract.balanceOf(e, e.msg.sender);
     assert to_mathint(balanceAfter) <= balanceBefore + beforeWithdraw;
 }
 
@@ -129,7 +133,7 @@ rule possibleToFullyWithdraw(address sender, uint96 amount) {
     env eL; // env for lock
     env eU; // env for unlock
     env eW; // env for withdraw
-    uint256 balanceBefore = SafeToken.balanceOf(sender);
+    uint256 balanceBefore = safeTokenContract.balanceOf(sender);
     require eL.msg.sender == sender;
     require eU.msg.sender == sender;
     require eW.msg.sender == sender;
@@ -143,5 +147,5 @@ rule possibleToFullyWithdraw(address sender, uint96 amount) {
     unlock(eU, unlockAmount);
 
     withdraw(eW, 0);
-    satisfy (balanceBefore == SafeToken.balanceOf(sender));
+    satisfy (balanceBefore == safeTokenContract.balanceOf(sender));
 }
