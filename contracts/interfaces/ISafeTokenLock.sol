@@ -9,19 +9,19 @@ pragma solidity 0.8.23;
  */
 interface ISafeTokenLock {
     struct User {
-        uint96 locked; // Contains the total locked token by a particular user.
-        uint96 unlocked; // Contains the total unlocked token by a particular user.
+        uint256 locked; // Contains the total locked token by a particular user.
+        uint256 unlocked; // Contains the total unlocked token by a particular user.
         uint32 unlockStart; // Zero or ID of Oldest unlock operation created which is yet to be withdrawn.
         uint32 unlockEnd; // Next unlock Id = unlockEnd++
     }
     struct UnlockInfo {
-        uint96 amount; // For 1 Billion Safe Tokens, this is enough. 10 ** 27 < 2 ** 96
+        uint256 amount;
         uint64 unlockedAt; // Valid until Year: 2554.
     }
 
-    event Locked(address indexed holder, uint96 amount);
-    event Unlocked(address indexed holder, uint32 indexed index, uint96 amount);
-    event Withdrawn(address indexed holder, uint32 indexed index, uint96 amount);
+    event Locked(address indexed holder, uint256 amount);
+    event Unlocked(address indexed holder, uint32 indexed index, uint256 amount);
+    event Withdrawn(address indexed holder, uint32 indexed index, uint256 amount);
 
     /**
      * @notice Error indicating an attempt to use zero tokens when locking or unlocking.
@@ -36,11 +36,10 @@ interface ISafeTokenLock {
     /**
      * @notice Locks the specified amount of tokens.
      * @param amount The amount of tokens to lock. The function will revert with {InvalidTokenAmount} in case `amount` is 0.
-     * @dev Safe Token Supply = 1 Billion with 18 decimals which is < 2 ** 96
      * Does not allow locking zero tokens.
      * Gas Usage (major): Token Transfer + SLOAD & SSTORE users[msg.sender] + Emit Event
      */
-    function lock(uint96 amount) external;
+    function lock(uint256 amount) external;
 
     /**
      * @notice Unlocks the specified amount of tokens.
@@ -50,7 +49,7 @@ interface ISafeTokenLock {
      * @dev Does not allow unlocking zero tokens.
      * Gas Usage (major): SLOAD & SSTORE users[msg.sender] + SLOAD COOLDOWN_PERIOD + SSTORE UnlockInfo + Emit Event
      */
-    function unlock(uint96 amount) external returns (uint32 index);
+    function unlock(uint256 amount) external returns (uint32 index);
 
     /**
      * @notice Withdraws the unlocked tokens of `maxUnlocks` oldest operations initiated by the caller.
@@ -61,14 +60,14 @@ interface ISafeTokenLock {
      * + n Zero assignment SSTORE unlocks[i][caller] + SSTORE users[caller] + SLOAD SAFE_TOKEN + Token Transfer
      * where n can be as high as max(`unlockEnd - unlockStart`, `maxUnlocks`).
      */
-    function withdraw(uint32 maxUnlocks) external returns (uint96 amount);
+    function withdraw(uint32 maxUnlocks) external returns (uint256 amount);
 
     /**
      * @notice Returns the amount of tokens associated to the specified holder.
      * @param holder The address of the holder.
      * @return amount The amount of (locked + to be unlocked + withdrawable) tokens of the holder.
      */
-    function totalBalance(address holder) external returns (uint96 amount);
+    function totalBalance(address holder) external returns (uint256 amount);
 
     /**
      * @notice Returns user information for the specified address.

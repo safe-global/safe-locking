@@ -52,7 +52,7 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
     /**
      * @inheritdoc ISafeTokenLock
      */
-    function lock(uint96 amount) external {
+    function lock(uint256 amount) external {
         if (amount == 0) revert InvalidTokenAmount();
         SAFE_TOKEN.transferFrom(msg.sender, address(this), amount);
 
@@ -63,7 +63,7 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
     /**
      * @inheritdoc ISafeTokenLock
      */
-    function unlock(uint96 amount) external returns (uint32 index) {
+    function unlock(uint256 amount) external returns (uint32 index) {
         if (amount == 0) revert InvalidTokenAmount();
 
         User memory user = _users[msg.sender];
@@ -79,7 +79,7 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
     /**
      * @inheritdoc ISafeTokenLock
      */
-    function withdraw(uint32 maxUnlocks) external returns (uint96 amount) {
+    function withdraw(uint32 maxUnlocks) external returns (uint256 amount) {
         User memory user = _users[msg.sender];
         uint32 index = user.unlockStart;
         uint32 unlockEnd = user.unlockEnd > index + maxUnlocks && maxUnlocks != 0 ? index + maxUnlocks : user.unlockEnd;
@@ -102,7 +102,7 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
     /**
      * @inheritdoc ISafeTokenLock
      */
-    function totalBalance(address holder) external view returns (uint96 amount) {
+    function totalBalance(address holder) external view returns (uint256 amount) {
         return _users[holder].locked + _users[holder].unlocked;
     }
 
