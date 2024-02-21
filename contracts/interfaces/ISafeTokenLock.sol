@@ -8,6 +8,17 @@ pragma solidity 0.8.23;
  * @custom:security-contact bounty@safe.global
  */
 interface ISafeTokenLock {
+    struct User {
+        uint96 locked; // Contains the total locked token by a particular user.
+        uint96 unlocked; // Contains the total unlocked token by a particular user.
+        uint32 unlockStart; // Zero or ID of Oldest unlock operation created which is yet to be withdrawn.
+        uint32 unlockEnd; // Next unlock Id = unlockEnd++
+    }
+    struct UnlockInfo {
+        uint96 amount; // For 1 Billion Safe Tokens, this is enough. 10 ** 27 < 2 ** 96
+        uint64 unlockedAt; // Valid until Year: 2554.
+    }
+
     event Locked(address indexed holder, uint96 amount);
     event Unlocked(address indexed holder, uint32 indexed index, uint96 amount);
     event Withdrawn(address indexed holder, uint32 indexed index, uint96 amount);
@@ -58,4 +69,19 @@ interface ISafeTokenLock {
      * @return amount The amount of (locked + to be unlocked + withdrawable) tokens of the holder.
      */
     function totalBalance(address holder) external returns (uint96 amount);
+
+    /**
+     * @notice Returns user information for the specified address.
+     * @param holder Address of the user.
+     * @return user {User} struct containing information for the specified address.
+     */
+    function getUser(address holder) external view returns (User memory user);
+
+    /**
+     * @notice Returns unlock information for the specified user and index.
+     * @param holder Address of the user.
+     * @param index The index of the unlock.
+     * @return unlockInfo {UnlockInfo} struct containing information about the unlock.
+     */
+    function getUnlock(address holder, uint32 index) external view returns (UnlockInfo memory unlockInfo);
 }
