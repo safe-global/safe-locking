@@ -1,25 +1,24 @@
+# Project files
+.env
+/dist
+
 # Node files
 /node_modules
 
 # Hardhat files
-/cache
 /artifacts
-
-# TypeChain files
+/build
+/cache
+/coverage
+/coverage.json
+/deployments
 /typechain
 /typechain-types
 
-# solidity-coverage files
-/coverage
-/coverage.json
-
 # Certora files
-.certora_internal
+/.certora_internal
 /venv
 
+# Miscellaneous files
 .DS_Store
-.env
-.vscode
-build/
-dist/
-deployments/
+/.vscode

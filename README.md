@@ -152,6 +152,12 @@ export CERTORAKEY="..."
 certoraRun certora/conf/SafeTokenLock.conf
 ```
 
+Note: To use a Solidity compiler at custom path, run with:
+
+```bash
+certoraRun certora/conf/SafeTokenLock.conf --solc /path/to/solc
+```
+
 ### Deploy
 
 > :warning: **Make sure to use the correct commit when deploying the contracts.** Any change (even comments) within the contract files will result in different addresses. The tagged versions can be found in the [releases](https://github.com/safe-global/safe-locking/releases).
