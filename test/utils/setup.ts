@@ -2,7 +2,7 @@ import { deployments, ethers } from 'hardhat'
 import { isForkedNetwork } from '../../src/utils/e2e'
 import { Address } from 'hardhat-deploy/types'
 
-export const cooldownPeriod = 60 * 60 * 24 * 30 // 30 days
+export const cooldownPeriod = 60n * 60n * 24n * 30n // 30 days
 
 export const getSafeTokenLock = async () => {
   const SafeTokenLockDeployment = await deployments.get('SafeTokenLock')

@@ -11,5 +11,5 @@ export const timestamp = async () => {
   if (block === null) {
     throw new Error('Missing Latest Block!')
   }
-  return block.timestamp as unknown as bigint
+  return BigInt(block.timestamp)
 }

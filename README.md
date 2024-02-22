@@ -78,7 +78,7 @@ sequenceDiagram
 	L -->>- H: id
 
 	note over H,L: Withdrawal
-	H  ->>  H: ... wait for 30 days ...
+	H  ->>  H: ... wait for cooldown period ...
 	H  ->>+ L: withdraw()
 	L  ->>+ T: transfer(msg.sender, b)
 	T -->>- H: b SAFE

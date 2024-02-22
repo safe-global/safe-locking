@@ -25,13 +25,13 @@ contract SafeTokenLock is ISafeTokenLock {
   }
 
   address public immutable SAFE_TOKEN; // = Safe Token Address.
-  uint64 public immutable COOLDOWN_PERIOD; // Contains the cooldown period. Default will be 30 days.
+  uint64 public immutable COOLDOWN_PERIOD; // Contains the cooldown period.
   mapping(address => User) public users; // Contains the address => user info struct.
   mapping(uint32 => mapping(address => UnlockInfo)) public unlocks; // Contains the Unlock index => user => Unlock Info struct.
 
-  constructor(address safeTokenAddress, uint32 cooldownPeriod) {
+  constructor(address safeToken, uint32 cooldownPeriod) {
     SAFE_TOKEN = safeTokenAddress; // Safe Token Contract Address
-    COOLDOWN_PERIOD = cooldownPeriod; // Cooldown period. Expected value to be passed is 30 days in seconds.
+    COOLDOWN_PERIOD = cooldownPeriod; // Cooldown period
   }
 
   // @inheritdoc ISafeTokenLock
@@ -55,7 +55,7 @@ contract SafeTokenLock is ISafeTokenLock {
         4. Update the `users[caller]` with (user[caller].locked - amount, user[caller].unlocked + amount, user[caller].unlockStart, user[caller].unlockEnd++).
         5. Emit the Event.
 
-        Gas Usage (major usage only): SLOAD & STORE users[caller] + SLOAD COOLDOWN_PERIOD + SSTORE UnlockInfo + Emit Event
+        Gas Usage (major usage only): SLOAD & STORE users[caller] + SSTORE UnlockInfo + Emit Event
     */
   }
 
@@ -74,7 +74,7 @@ contract SafeTokenLock is ISafeTokenLock {
           4.1 Update `users[caller]` to `(locked as same, unlocked - amount, unlockStart = i, unlockEnd as same)`
           4.2 Transfer `amount` to `caller`.
 
-        Gas Usage (major usage only): SLOAD users[caller] + n SLOAD unlocks[i][caller] + n Event Emits + n Zero assignment SSTORE unlocks[i][caller] + SSTORE users[caller] + SLOAD SAFE_TOKEN + Token Transfer
+        Gas Usage (major usage only): SLOAD users[caller] + n SLOAD unlocks[i][caller] + n Event Emits + n Zero assignment SSTORE unlocks[i][caller] + SSTORE users[caller] + Token Transfer
         where n can be as high as `unlockEnd - unlockStart`.
     */
   }
