@@ -148,7 +148,7 @@ sudo mv solc-static-linux /some/directory/in/your/path/solc-0.8.23
 To execute the formal verification specification:
 
 ```bash
-export CERTORAKEY="all your base are belong to us"
+export CERTORAKEY="..."
 certoraRun certora/conf/SafeTokenLock.conf
 ```
 
