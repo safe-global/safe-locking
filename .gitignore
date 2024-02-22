@@ -1,5 +1,5 @@
-node_modules
-.env
+# Node files
+/node_modules
 
 # Hardhat files
 /cache
@@ -13,9 +13,13 @@ node_modules
 /coverage
 /coverage.json
 
-.DS_Store
+# Certora files
 .certora_internal
+/venv
+
+.DS_Store
+.env
+.vscode
 build/
 dist/
 deployments/
-.vscode

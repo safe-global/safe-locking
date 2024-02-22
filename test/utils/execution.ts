@@ -1,5 +1,5 @@
 import { BigNumberish, Signer } from 'ethers'
-import { SafeToken } from '../../typechain-types/safe-token/contracts/SafeToken'
+import { SafeToken } from '../../typechain-types/@safe-global/safe-token/contracts/SafeToken'
 import { ethers } from 'hardhat'
 
 export const transferToken = (token: SafeToken, from: Signer, to: Signer, amount: BigNumberish) => {

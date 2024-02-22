@@ -1,4 +1,4 @@
-using SafeToken as safeTokenContract;
+using SafeTokenHarness as safeTokenContract;
 
 methods {
     // SafeTokenLock functions
@@ -13,6 +13,9 @@ methods {
 
     // SafeToken functions
     function safeTokenContract.balanceOf(address) external returns(uint256) envfree;
+
+    // Prevent SafeTokenHarness.transfer to cause HAVOC
+    function _.transfer(address,uint256) external => NONDET UNRESOLVED;
 }
 
 ghost mapping(address => mathint) userUnlocks {
