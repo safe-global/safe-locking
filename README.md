@@ -127,6 +127,37 @@ NOTE: To run E2E test, `INFURA_KEY` in `.env` with the appropriate value to fork
 npm run test:all
 ```
 
+#### Formal Verification
+
+First setup a Python virtual environment and install required Certora dependencies:
+
+```bash
+python3 -m venv venv
+. venv/bin/activate
+pip install -r certora/requirements.txt
+```
+
+Install the correct `solc` binary version. On Linux:
+
+```bash
+wget https://github.com/ethereum/solidity/releases/download/v0.8.23/solc-static-linux
+chmod +x solc-static-linux
+sudo mv solc-static-linux /some/directory/in/your/path/solc-0.8.23
+```
+
+To execute the formal verification specification:
+
+```bash
+export CERTORAKEY="..."
+certoraRun certora/conf/SafeTokenLock.conf
+```
+
+Note: To use a Solidity compiler at custom path, run with:
+
+```bash
+certoraRun certora/conf/SafeTokenLock.conf --solc /path/to/solc
+```
+
 ### Deploy
 
 > :warning: **Make sure to use the correct commit when deploying the contracts.** Any change (even comments) within the contract files will result in different addresses. The tagged versions can be found in the [releases](https://github.com/safe-global/safe-locking/releases).
