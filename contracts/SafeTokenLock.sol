@@ -12,25 +12,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @custom:security-contact bounty@safe.global
  */
 contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
-    struct User {
-        uint96 locked; // Contains the total locked token by a particular user.
-        uint96 unlocked; // Contains the total unlocked token by a particular user.
-        uint32 unlockStart; // Zero or ID of Oldest unlock operation created which is yet to be withdrawn.
-        uint32 unlockEnd; // Next unlock Id = unlockEnd++
-    }
-    struct UnlockInfo {
-        uint96 amount; // For 1 Billion Safe Tokens, this is enough. 10 ** 27 < 2 ** 96
-        uint64 unlockedAt; // Valid until Year: 2554.
-    }
-
-    /* solhint-disable var-name-mixedcase */
-    IERC20 public immutable SAFE_TOKEN; // Safe Token Address.
-    uint64 public immutable COOLDOWN_PERIOD; // Contains the cooldown period. Default will be 30 days.
-    /* solhint-enable var-name-mixedcase */
-
-    mapping(address => User) internal users; // Contains the address => user info struct.
-    mapping(uint32 => mapping(address => UnlockInfo)) internal unlocks; // Contains the Unlock id => user => Unlock Info struct.
-
     /**
      * @notice Error indicating an attempt to use the zero address as Safe Token address.
      */
@@ -47,17 +28,30 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
     error CannotRecoverSafeToken();
 
     /**
+     * @inheritdoc ISafeTokenLock
+     */
+    address public immutable SAFE_TOKEN;
+
+    /**
+     * @inheritdoc ISafeTokenLock
+     */
+    uint64 public immutable COOLDOWN_PERIOD;
+
+    mapping(address => User) internal _users; // Contains the address => user info struct.
+    mapping(uint32 => mapping(address => UnlockInfo)) internal _unlocks; // Contains the Unlock id => user => Unlock Info struct.
+
+    /**
      * @notice Sets the immutables of the contract and the initial owner.
      * @param initialOwner Initial owner of the contract.
-     * @param safeTokenAddress Address of the Safe token. Passing address(0) will revert with {InvalidSafeTokenAddress}.
-     * @param cooldownPeriod A uint32 type indicating the minimum period in seconds after which Safe token withdrawal can be performed. Passing zero will revert with {InvalidTokenAmount}.
+     * @param safeToken Address of the Safe token. Passing address(0) will revert with {InvalidSafeTokenAddress}.
+     * @param cooldownPeriod The minimum period in seconds after which Safe token withdrawal can be performed. Passing zero will revert with {InvalidTokenAmount}.
      */
-    constructor(address initialOwner, address safeTokenAddress, uint32 cooldownPeriod) Ownable(initialOwner) {
-        if (safeTokenAddress == address(0)) revert InvalidSafeTokenAddress();
+    constructor(address initialOwner, address safeToken, uint32 cooldownPeriod) Ownable(initialOwner) {
+        if (safeToken == address(0)) revert InvalidSafeTokenAddress();
         if (cooldownPeriod == 0) revert InvalidCooldownPeriod();
 
-        SAFE_TOKEN = IERC20(safeTokenAddress); // Safe Token Contract Address
-        COOLDOWN_PERIOD = cooldownPeriod; // Cooldown period. Expected value to be passed is 30 days in seconds.
+        SAFE_TOKEN = safeToken;
+        COOLDOWN_PERIOD = cooldownPeriod;
     }
 
     /**
@@ -65,9 +59,9 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
      */
     function lock(uint96 amount) external {
         if (amount == 0) revert InvalidTokenAmount();
-        SAFE_TOKEN.transferFrom(msg.sender, address(this), amount);
+        IERC20(SAFE_TOKEN).transferFrom(msg.sender, address(this), amount);
 
-        users[msg.sender].locked += amount;
+        _users[msg.sender].locked += amount;
         emit Locked(msg.sender, amount);
     }
 
@@ -77,11 +71,11 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
     function unlock(uint96 amount) external returns (uint32 index) {
         if (amount == 0) revert InvalidTokenAmount();
 
-        User memory user = users[msg.sender];
+        User memory user = _users[msg.sender];
         if (user.locked < amount) revert UnlockAmountExceeded();
 
-        unlocks[user.unlockEnd][msg.sender] = UnlockInfo(amount, uint64(block.timestamp) + COOLDOWN_PERIOD);
-        users[msg.sender] = User(user.locked - amount, user.unlocked + amount, user.unlockStart, user.unlockEnd + 1);
+        _unlocks[user.unlockEnd][msg.sender] = UnlockInfo(amount, uint64(block.timestamp) + COOLDOWN_PERIOD);
+        _users[msg.sender] = User(user.locked - amount, user.unlocked + amount, user.unlockStart, user.unlockEnd + 1);
         index = user.unlockEnd;
 
         emit Unlocked(msg.sender, index, amount);
@@ -91,22 +85,22 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
      * @inheritdoc ISafeTokenLock
      */
     function withdraw(uint32 maxUnlocks) external returns (uint96 amount) {
-        User memory user = users[msg.sender];
+        User memory user = _users[msg.sender];
         uint32 index = user.unlockStart;
         uint32 unlockEnd = user.unlockEnd > index + maxUnlocks && maxUnlocks != 0 ? index + maxUnlocks : user.unlockEnd;
 
         for (; index < unlockEnd; index++) {
-            UnlockInfo memory unlockInfo = unlocks[index][msg.sender];
+            UnlockInfo memory unlockInfo = _unlocks[index][msg.sender];
             if (unlockInfo.unlockedAt > block.timestamp) break;
 
             amount += unlockInfo.amount;
             emit Withdrawn(msg.sender, index, unlockInfo.amount);
-            delete unlocks[index][msg.sender];
+            delete _unlocks[index][msg.sender];
         }
 
         if (amount > 0) {
-            users[msg.sender] = User(user.locked, user.unlocked - amount, index, user.unlockEnd);
-            SAFE_TOKEN.transfer(msg.sender, uint256(amount));
+            _users[msg.sender] = User(user.locked, user.unlocked - amount, index, user.unlockEnd);
+            IERC20(SAFE_TOKEN).transfer(msg.sender, uint256(amount));
         }
     }
 
@@ -114,24 +108,30 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
      * @inheritdoc ISafeTokenLock
      */
     function totalBalance(address holder) external view returns (uint96 amount) {
-        return users[holder].locked + users[holder].unlocked;
+        return _users[holder].locked + _users[holder].unlocked;
+    }
+
+    /**
+     * @inheritdoc ISafeTokenLock
+     */
+    function getUser(address holder) external view returns (User memory user) {
+        user = _users[holder];
+    }
+
+    /**
+     * @inheritdoc ISafeTokenLock
+     */
+    function getUnlock(address holder, uint32 index) external view returns (UnlockInfo memory unlockInfo) {
+        unlockInfo = _unlocks[index][holder];
     }
 
     /**
      * @dev Transfers the specified amount of tokens from the contract to the owner. Only the owner can call this function.
-     * @param token Address of the token to be recovered. The function will revert with {CannotRecoverSafeToken} in case `token` is {SAFE_TOKEN}.
+     * @param token Address of the token to be recovered. The function will revert with {CannotRecoverSafeToken} in case `token` is {safeToken}.
      * @param amount The amount of tokens to transfer.
      */
-    function recoverERC20(IERC20 token, uint256 amount) external onlyOwner {
+    function recoverERC20(address token, uint256 amount) external onlyOwner {
         if (token == SAFE_TOKEN) revert CannotRecoverSafeToken();
-        token.transfer(msg.sender, amount);
-    }
-
-    function getUser(address userAddress) external view returns (User memory) {
-        return users[userAddress];
-    }
-
-    function getUserUnlock(address userAddress, uint32 index) external view returns (UnlockInfo memory) {
-        return unlocks[index][userAddress];
+        IERC20(token).transfer(msg.sender, amount);
     }
 }

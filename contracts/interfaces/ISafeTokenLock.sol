@@ -8,6 +8,17 @@ pragma solidity 0.8.23;
  * @custom:security-contact bounty@safe.global
  */
 interface ISafeTokenLock {
+    struct User {
+        uint96 locked; // Contains the total locked token by a particular user.
+        uint96 unlocked; // Contains the total unlocked token by a particular user.
+        uint32 unlockStart; // Zero or ID of Oldest unlock operation created which is yet to be withdrawn.
+        uint32 unlockEnd; // Next unlock Id = unlockEnd++
+    }
+    struct UnlockInfo {
+        uint96 amount; // For 1 Billion Safe Tokens, this is enough. 10 ** 27 < 2 ** 96
+        uint64 unlockedAt; // Valid until Year: 2554.
+    }
+
     event Locked(address indexed holder, uint96 amount);
     event Unlocked(address indexed holder, uint32 indexed index, uint96 amount);
     event Withdrawn(address indexed holder, uint32 indexed index, uint96 amount);
@@ -21,6 +32,24 @@ interface ISafeTokenLock {
      * @notice Error indicating an attempt to unlock an amount greater than the holder's currently locked tokens.
      */
     error UnlockAmountExceeded();
+
+    /* solhint-disable func-name-mixedcase */
+
+    /**
+     * @notice Gets the configured Safe token for locking contract.
+     * @return safeToken The address of the Safe token.
+     * @dev The Safe token address is immutable and does not change.
+     */
+    function SAFE_TOKEN() external view returns (address safeToken);
+
+    /**
+     * @notice Gets the configured cooldown period for locking contract.
+     * @return cooldownPeriod The cooldown period in seconds.
+     * @dev The cooldown period is immutable and does not change.
+     */
+    function COOLDOWN_PERIOD() external view returns (uint64 cooldownPeriod);
+
+    /* solhint-enable func-name-mixedcase */
 
     /**
      * @notice Locks the specified amount of tokens.
@@ -37,7 +66,7 @@ interface ISafeTokenLock {
      *               The function will revert with custom error {UnlockAmountExceeded} in case `amount` is greater than the locked amount.
      * @return index The index of the unlock operation.
      * @dev Does not allow unlocking zero tokens.
-     * Gas Usage (major): SLOAD & SSTORE users[msg.sender] + SLOAD COOLDOWN_PERIOD + SSTORE UnlockInfo + Emit Event
+     * Gas Usage (major): SLOAD & SSTORE users[msg.sender] + SSTORE UnlockInfo + Emit Event
      */
     function unlock(uint96 amount) external returns (uint32 index);
 
@@ -47,7 +76,7 @@ interface ISafeTokenLock {
      * @return amount The amount of tokens withdrawn.
      * @dev Calling this function with zero `maxUnlocks` will result in withdrawing all matured unlock operations.
      * Gas Usage (major usage only): SLOAD users[caller] + n SLOAD unlocks[i][caller] + n Event Emits
-     * + n Zero assignment SSTORE unlocks[i][caller] + SSTORE users[caller] + SLOAD SAFE_TOKEN + Token Transfer
+     * + n Zero assignment SSTORE unlocks[i][caller] + SSTORE users[caller] + Token Transfer
      * where n can be as high as max(`unlockEnd - unlockStart`, `maxUnlocks`).
      */
     function withdraw(uint32 maxUnlocks) external returns (uint96 amount);
@@ -58,4 +87,19 @@ interface ISafeTokenLock {
      * @return amount The amount of (locked + to be unlocked + withdrawable) tokens of the holder.
      */
     function totalBalance(address holder) external returns (uint96 amount);
+
+    /**
+     * @notice Returns user information for the specified address.
+     * @param holder Address of the user.
+     * @return user {User} struct containing information for the specified address.
+     */
+    function getUser(address holder) external view returns (User memory user);
+
+    /**
+     * @notice Returns unlock information for the specified user and index.
+     * @param holder Address of the user.
+     * @param index The index of the unlock.
+     * @return unlockInfo {UnlockInfo} struct containing information about the unlock.
+     */
+    function getUnlock(address holder, uint32 index) external view returns (UnlockInfo memory unlockInfo);
 }

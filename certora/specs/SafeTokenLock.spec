@@ -1,17 +1,18 @@
-using SafeToken as safeToken;
+using SafeToken as safeTokenContract;
 
 methods {
     // SafeTokenLock functions
     function lock(uint96) external returns(uint32);
     function unlock(uint32, uint96) external returns(bool);
     function withdraw(uint32) external returns (uint96);
+    function getUser(address holder) external returns(ISafeTokenLock.User memory) envfree;
+    function getUnlock(address holder, uint32 index) external returns(ISafeTokenLock.UnlockInfo memory) envfree;
 
     // Harnessed functions
-    function getUser(address userAddress) external returns(SafeTokenLock.User memory) envfree;
-    function getUserUnlock(address userAddress, uint32 index) external returns(SafeTokenLock.UnlockInfo memory) envfree;
-    function getSafeTokenAddress() external returns(address) envfree;
     function getStartAndEnd(address userAddress) external returns(uint32, uint32) envfree;
-    function safeToken.balanceOf(address) external returns(uint256) envfree;
+
+    // SafeToken functions
+    function safeTokenContract.balanceOf(address) external returns(uint256) envfree;
 }
 
 ghost mapping(address => mathint) userUnlocks {
@@ -22,11 +23,11 @@ ghost mapping(address => mathint) userLocks {
     init_state axiom forall address X.userLocks[X] == 0;
 }
 
-hook Sload uint96 v currentContract.users[KEY address user].locked STORAGE {
+hook Sload uint96 v currentContract._users[KEY address user].locked STORAGE {
     require userLocks[user] == to_mathint(v);
 }
 
-hook Sload uint96 v currentContract.users[KEY address user].unlocked STORAGE { 
+hook Sload uint96 v currentContract._users[KEY address user].unlocked STORAGE { 
     require userUnlocks[user] == to_mathint(v);
 }
 
@@ -51,11 +52,11 @@ rule doesNotAffectOtherUserBalance(method f) {
 
 rule cannotWithdrawMoreThanUnlocked() {
     env e;
-    uint256 balanceBefore = safeToken.balanceOf(e, e.msg.sender);
+    uint256 balanceBefore = safeTokenContract.balanceOf(e, e.msg.sender);
     mathint beforeWithdraw = userUnlocks[e.msg.sender];
     withdraw(e, 0);
     require !lastReverted;
-    uint256 balanceAfter = safeToken.balanceOf(e, e.msg.sender);
+    uint256 balanceAfter = safeTokenContract.balanceOf(e, e.msg.sender);
     assert to_mathint(balanceAfter) <= balanceBefore + beforeWithdraw;
 }
 
@@ -71,7 +72,7 @@ rule cannotWithdrawBeforeCooldown() {
 
     require start == i && end != i;
 
-    SafeTokenLock.UnlockInfo unlockInfo = getUserUnlock(e.msg.sender, i);
+    ISafeTokenLock.UnlockInfo unlockInfo = getUnlock(e.msg.sender, i);
     maturesAtTimestamp = unlockInfo.unlockedAt;
     amount = unlockInfo.amount;
     require maturesAtTimestamp > e.block.timestamp && amount > 0;
@@ -92,11 +93,11 @@ rule unlockTimeDoesNotChange(method f) {
     uint96 amount;
     address user;
 
-    SafeTokenLock.User user1 = getUser(user);
+    ISafeTokenLock.User user1 = getUser(user);
 
     require user1.unlockStart == i && user1.unlockEnd != i;
 
-    SafeTokenLock.UnlockInfo unlockInfo = getUserUnlock(user, i);
+    ISafeTokenLock.UnlockInfo unlockInfo = getUnlock(user, i);
 
     calldataarg args;
    
@@ -107,21 +108,21 @@ rule unlockTimeDoesNotChange(method f) {
 
     f(e, args);
 
-    SafeTokenLock.UnlockInfo unlockInfo2 = getUserUnlock(user, i);
-    SafeTokenLock.User user2 = getUser(user);
+    ISafeTokenLock.UnlockInfo unlockInfo2 = getUnlock(user, i);
+    ISafeTokenLock.User user2 = getUser(user);
 
     assert user1.unlockStart == user2.unlockStart;
     assert maturesAtTimestamp == to_mathint(unlockInfo2.unlockedAt);
 }
 
 // hook to update sum of locked tokens whenever user struct is updated
-hook Sstore SafeTokenLockHarness.users[KEY address user].locked uint96 value (uint96 old_value) STORAGE {
+hook Sstore SafeTokenLockHarness._users[KEY address user].locked uint96 value (uint96 old_value) STORAGE {
     ghostLocked = ghostLocked + (value - old_value);
     userLocks[user] = value;
 }
 
 // hook to update sum of unlocked tokens whenever user struct is updated
-hook Sstore SafeTokenLockHarness.users[KEY address key].unlocked uint96 value (uint96 old_value) STORAGE {
+hook Sstore SafeTokenLockHarness._users[KEY address key].unlocked uint96 value (uint96 old_value) STORAGE {
     ghostUnlocked = ghostUnlocked + (value - old_value);
     userUnlocks[key] = value;
 }
@@ -132,7 +133,7 @@ rule possibleToFullyWithdraw(address sender, uint96 amount) {
     env eL; // env for lock
     env eU; // env for unlock
     env eW; // env for withdraw
-    uint256 balanceBefore = safeToken.balanceOf(sender);
+    uint256 balanceBefore = safeTokenContract.balanceOf(sender);
     require eL.msg.sender == sender;
     require eU.msg.sender == sender;
     require eW.msg.sender == sender;
@@ -146,5 +147,5 @@ rule possibleToFullyWithdraw(address sender, uint96 amount) {
     unlock(eU, unlockAmount);
 
     withdraw(eW, 0);
-    satisfy (balanceBefore == safeToken.balanceOf(sender));
+    satisfy (balanceBefore == safeTokenContract.balanceOf(sender));
 }
