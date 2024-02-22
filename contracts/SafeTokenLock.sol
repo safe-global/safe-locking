@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 pragma solidity 0.8.23;
 
-import {ISafeTokenLock} from "./interfaces/ISafeTokenLock.sol";
-import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import {TokenRescuer} from "./base/TokenRescuer.sol";
+import {ISafeTokenLock} from "./interfaces/ISafeTokenLock.sol";
 
 /**
  * @title SafeTokenLock - A Locking Contract for Safe Tokens.
  * @author @safe-global/safe-protocol
  * @custom:security-contact bounty@safe.global
  */
-contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
+contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
     /**
      * @notice Error indicating an attempt to use the zero address as Safe Token address.
      */
@@ -126,12 +127,10 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
     }
 
     /**
-     * @dev Transfers the specified amount of tokens from the contract to the owner. Only the owner can call this function.
-     * @param token Address of the token to be recovered. The function will revert with {CannotRecoverSafeToken} in case `token` is {safeToken}.
-     * @param amount The amount of tokens to transfer.
+     * @inheritdoc TokenRescuer
      */
-    function recoverERC20(address token, uint256 amount) external onlyOwner {
+    function _beforeTokenRescue(address token, address beneficiary, uint256 amount) internal override {
         if (token == SAFE_TOKEN) revert CannotRecoverSafeToken();
-        IERC20(token).transfer(msg.sender, amount);
+        TokenRescuer._beforeTokenRescue(token, beneficiary, amount);
     }
 }

@@ -965,40 +965,55 @@ describe('SafeTokenLock', function () {
     })
   })
 
-  describe('Recover ERC20', function () {
+  describe('Token Rescue', function () {
     it('Should not allow non-owner to recover', async () => {
       const { safeTokenLock, alice } = await setupTests()
-      expect(safeTokenLock.connect(alice).recoverERC20(ZeroAddress, 0))
+      expect(safeTokenLock.connect(alice).rescueToken(ZeroAddress, ZeroAddress, 0))
         .to.be.revertedWithCustomError(safeTokenLock, 'OwnableUnauthorizedAccount')
         .withArgs(alice)
     })
 
     it('Should not allow Safe token recovery', async () => {
       const { safeToken, safeTokenLock, owner } = await setupTests()
-      expect(safeTokenLock.connect(owner).recoverERC20(safeToken, 0)).to.be.revertedWithCustomError(safeTokenLock, 'CannotRecoverSafeToken')
+      expect(safeTokenLock.connect(owner).rescueToken(safeToken, ZeroAddress, 0)).to.be.revertedWithCustomError(
+        safeTokenLock,
+        'CannotRecoverSafeToken',
+      )
     })
 
     it('Should allow ERC20 recovery other than Safe token', async () => {
-      const { safeToken, safeTokenLock, owner } = await setupTests()
+      const { safeToken, safeTokenLock, owner, alice } = await setupTests()
       const erc20 = await (await ethers.getContractFactory('TestERC20')).deploy('TEST', 'TEST')
 
       const amount = 1n
       await erc20.mint(safeTokenLock, amount)
 
-      const ownerBalanceBefore = await erc20.balanceOf(owner)
+      const aliceBalanceBefore = await erc20.balanceOf(alice)
       const contractBalanceBefore = await erc20.balanceOf(safeTokenLock)
       const contractSafeTokenBalanceBefore = await safeToken.balanceOf(safeTokenLock)
 
-      await safeTokenLock.connect(owner).recoverERC20(erc20, amount)
+      await safeTokenLock.connect(owner).rescueToken(erc20, alice, amount)
 
-      const ownerBalanceAfter = await erc20.balanceOf(owner)
-      expect(ownerBalanceAfter).equals(ownerBalanceBefore + amount)
+      const aliceBalanceAfter = await erc20.balanceOf(alice)
+      expect(aliceBalanceAfter).equals(aliceBalanceBefore + amount)
 
       const contractBalanceAfter = await erc20.balanceOf(safeTokenLock)
       expect(contractBalanceAfter).equals(contractBalanceBefore - amount)
 
       const contractSafeTokenBalanceAfter = await safeToken.balanceOf(safeTokenLock)
       expect(contractSafeTokenBalanceAfter).equals(contractSafeTokenBalanceBefore)
+    })
+
+    it('Should work with non-standard ERC20s', async () => {
+      const { safeTokenLock, owner } = await setupTests()
+
+      const TestNonStandardERC20 = await ethers.getContractFactory('TestNonStandardERC20')
+
+      const erc20ReturnFalseOnFailure = await TestNonStandardERC20.deploy(0)
+      const erc20ReturnNothingOnSuccess = await TestNonStandardERC20.deploy(1)
+
+      await expect(safeTokenLock.connect(owner).rescueToken(erc20ReturnFalseOnFailure, owner, 1)).to.be.reverted
+      await expect(safeTokenLock.connect(owner).rescueToken(erc20ReturnNothingOnSuccess, owner, 1)).to.not.be.reverted
     })
   })
 
