@@ -107,7 +107,7 @@ contract SafeTokenLock is ISafeTokenLock, Ownable2Step {
     /**
      * @inheritdoc ISafeTokenLock
      */
-    function totalBalance(address holder) external view returns (uint96 amount) {
+    function userTokenBalance(address holder) external view returns (uint96 amount) {
         return _users[holder].locked + _users[holder].unlocked;
     }
 
