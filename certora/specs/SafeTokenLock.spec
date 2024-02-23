@@ -48,9 +48,9 @@ rule doesNotAffectOtherUserBalance(method f) {
     calldataarg args;
     require (e.msg.sender != otherUser);
 
-    uint96 otherUserBalanceBefore = totalBalance(e, otherUser);
+    uint96 otherUserBalanceBefore = userTokenBalance(e, otherUser);
     f(e,args);
-    assert totalBalance(e, otherUser) == otherUserBalanceBefore;
+    assert userTokenBalance(e, otherUser) == otherUserBalanceBefore;
 }
 
 rule cannotWithdrawMoreThanUnlocked() {

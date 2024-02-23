@@ -82,11 +82,11 @@ interface ISafeTokenLock {
     function withdraw(uint32 maxUnlocks) external returns (uint96 amount);
 
     /**
-     * @notice Returns the amount of tokens associated to the specified holder.
+     * @notice Returns the amount of Safe tokens associated to the specified holder.
      * @param holder The address of the holder.
-     * @return amount The amount of (locked + to be unlocked + withdrawable) tokens of the holder.
+     * @return amount The amount of (locked + to be unlocked + withdrawable) Safe tokens of the holder.
      */
-    function totalBalance(address holder) external returns (uint96 amount);
+    function userTokenBalance(address holder) external returns (uint96 amount);
 
     /**
      * @notice Returns user information for the specified address.

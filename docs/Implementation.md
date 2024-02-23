@@ -80,7 +80,7 @@ contract SafeTokenLock is ISafeTokenLock {
   }
 
   // @inheritdoc ISafeTokenLock
-  function totalBalance(address holder) external returns (uint96 amount) {
+  function userTokenBalance(address holder) external returns (uint96 amount) {
     /**
         Return the amount from `users[caller].locked` + `users[caller].unlocked`.
 

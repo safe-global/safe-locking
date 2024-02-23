@@ -78,7 +78,7 @@ describe('SafeTokenLock', function () {
 
       // Checking Locked Token details
       expect((await safeTokenLock.getUser(alice)).locked).to.equal(tokenToLock)
-      expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToLock)
+      expect(await safeTokenLock.userTokenBalance(alice)).to.equal(tokenToLock)
     })
 
     it('Should not lock zero tokens', async function () {
@@ -122,7 +122,7 @@ describe('SafeTokenLock', function () {
 
       // Checking Final Locked Token details
       expect((await safeTokenLock.getUser(alice)).locked).to.equal(totalTokensToLock)
-      expect(await safeTokenLock.totalBalance(alice)).to.equal(totalTokensToLock)
+      expect(await safeTokenLock.userTokenBalance(alice)).to.equal(totalTokensToLock)
     })
 
     it('Should be possible to lock all tokens', async function () {
@@ -142,7 +142,7 @@ describe('SafeTokenLock', function () {
 
       // Checking Locked Token details
       expect((await safeTokenLock.getUser(alice)).locked).to.equal(tokenToLock)
-      expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToLock)
+      expect(await safeTokenLock.userTokenBalance(alice)).to.equal(tokenToLock)
     })
 
     it('Should not lock tokens without transferring token', async function () {
@@ -198,7 +198,7 @@ describe('SafeTokenLock', function () {
       expect((await safeTokenLock.getUser(alice)).unlockEnd).to.equal(1)
       expect((await safeTokenLock.getUnlock(alice, 0)).amount).to.equal(tokenToUnlock)
       expect((await safeTokenLock.getUnlock(alice, 0)).unlockedAt).to.equal(expectedUnlockedAt)
-      expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToLock)
+      expect(await safeTokenLock.userTokenBalance(alice)).to.equal(tokenToLock)
     })
 
     it('Should not unlock zero tokens', async function () {
@@ -267,7 +267,7 @@ describe('SafeTokenLock', function () {
       expect((await safeTokenLock.getUser(alice)).unlocked).to.equal(tokenToUnlock * BigInt(index))
       expect((await safeTokenLock.getUser(alice)).unlockStart).to.equal(0)
       expect((await safeTokenLock.getUser(alice)).unlockEnd).to.equal(index)
-      expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToLock)
+      expect(await safeTokenLock.userTokenBalance(alice)).to.equal(tokenToLock)
     })
 
     it('Should be possible to unlock all tokens', async function () {
@@ -300,7 +300,7 @@ describe('SafeTokenLock', function () {
       expect((await safeTokenLock.getUser(alice)).unlockEnd).to.equal(1)
       expect((await safeTokenLock.getUnlock(alice, 0)).amount).to.equal(tokenToUnlock)
       expect((await safeTokenLock.getUnlock(alice, 0)).unlockedAt).to.equal(expectedUnlockedAt)
-      expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToUnlock)
+      expect(await safeTokenLock.userTokenBalance(alice)).to.equal(tokenToUnlock)
     })
 
     it('Should not reduce the total token before & after unlock', async function () {
@@ -375,8 +375,8 @@ describe('SafeTokenLock', function () {
       expect((await safeTokenLock.getUnlock(alice, index)).unlockedAt).to.equal(expectedUnlockedAtAlice)
       expect((await safeTokenLock.getUnlock(bob, index)).amount).to.equal(tokenToUnlockBob)
       expect((await safeTokenLock.getUnlock(bob, index)).unlockedAt).to.equal(expectedUnlockedAtBob)
-      expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToLockAlice)
-      expect(await safeTokenLock.totalBalance(bob)).to.equal(tokenToLockBob)
+      expect(await safeTokenLock.userTokenBalance(alice)).to.equal(tokenToLockAlice)
+      expect(await safeTokenLock.userTokenBalance(bob)).to.equal(tokenToLockBob)
     })
   })
 
@@ -419,7 +419,7 @@ describe('SafeTokenLock', function () {
       expect(aliceUnlockEndAfter).to.equal(aliceUnlockEndBefore)
       expect((await safeTokenLock.getUnlock(alice, 0)).amount).to.equal(0)
       expect((await safeTokenLock.getUnlock(alice, 0)).unlockedAt).to.equal(0)
-      expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToLock - tokenToUnlock)
+      expect(await safeTokenLock.userTokenBalance(alice)).to.equal(tokenToLock - tokenToUnlock)
     })
 
     it('Should allow withdraw call even if no tokens are unlocked', async function () {
@@ -475,7 +475,7 @@ describe('SafeTokenLock', function () {
         expect((await safeTokenLock.getUnlock(alice, index)).amount).to.equal(0)
         expect((await safeTokenLock.getUnlock(alice, index)).unlockedAt).to.equal(0)
       }
-      expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToLock - tokenToUnlock * BigInt(index))
+      expect(await safeTokenLock.userTokenBalance(alice)).to.equal(tokenToLock - tokenToUnlock * BigInt(index))
     })
 
     it('Should withdraw all matured unlocked tokens together by passing zero as maxUnlocks', async function () {
@@ -522,7 +522,7 @@ describe('SafeTokenLock', function () {
         expect((await safeTokenLock.getUnlock(alice, index)).amount).to.equal(0)
         expect((await safeTokenLock.getUnlock(alice, index)).unlockedAt).to.equal(0)
       }
-      expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToLock - tokenToUnlock * BigInt(index))
+      expect(await safeTokenLock.userTokenBalance(alice)).to.equal(tokenToLock - tokenToUnlock * BigInt(index))
     })
 
     it('Should withdraw multiple times correctly', async function () {
@@ -602,7 +602,7 @@ describe('SafeTokenLock', function () {
       for (; index < 10; index++) {
         expect((await safeTokenLock.getUnlock(alice, index)).amount).to.equal(tokenToUnlock)
       }
-      expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToLock - tokenToUnlock * BigInt(6))
+      expect(await safeTokenLock.userTokenBalance(alice)).to.equal(tokenToLock - tokenToUnlock * BigInt(6))
     })
 
     it('Should withdraw multiple times correctly with specified and zero maxUnlocks', async function () {
@@ -679,7 +679,7 @@ describe('SafeTokenLock', function () {
         expect((await safeTokenLock.getUnlock(alice, index)).amount).to.equal(0)
         expect((await safeTokenLock.getUnlock(alice, index)).unlockedAt).to.equal(0)
       }
-      expect(await safeTokenLock.totalBalance(alice)).to.equal(0)
+      expect(await safeTokenLock.userTokenBalance(alice)).to.equal(0)
     })
 
     it('Should not revert if passed with maxUnlocks > unlock operations and withdraw based on unlock timestamp', async function () {
@@ -868,7 +868,7 @@ describe('SafeTokenLock', function () {
       expect(aliceUnlockEndAfter).to.equal(aliceUnlockEndBefore)
       expect((await safeTokenLock.getUnlock(alice, 0)).amount).to.equal(0)
       expect((await safeTokenLock.getUnlock(alice, 0)).unlockedAt).to.equal(0)
-      expect(await safeTokenLock.totalBalance(alice)).to.equal(0)
+      expect(await safeTokenLock.userTokenBalance(alice)).to.equal(0)
     })
 
     it('Should emit Withdrawn event when tokens are withdrawn correctly', async function () {
@@ -945,13 +945,13 @@ describe('SafeTokenLock', function () {
       await safeTokenLock.connect(alice).lock(tokenToLock)
 
       // Checking Total Balance of User after Lock (Locked: tokenToLock, Unlocked: 0)
-      expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToLock)
+      expect(await safeTokenLock.userTokenBalance(alice)).to.equal(tokenToLock)
 
       // Unlocking tokens
       await safeTokenLock.connect(alice).unlock(tokenToUnlock)
 
       // Checking Total Balance of User after Unlock (Locked: tokenToLock - tokenToUnlock, Unlocked: tokenToUnlock)
-      expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToLock)
+      expect(await safeTokenLock.userTokenBalance(alice)).to.equal(tokenToLock)
 
       // Getting unlocked at timestamp and increasing timestamp
       const unlockedAt = (await safeTokenLock.getUnlock(alice, 0)).unlockedAt
@@ -961,7 +961,7 @@ describe('SafeTokenLock', function () {
       await safeTokenLock.connect(alice).withdraw(0)
 
       // Checking Total Balance of User after Withdraw (Locked: tokenToLock - tokenToUnlock, Unlocked: 0)
-      expect(await safeTokenLock.totalBalance(alice)).to.equal(tokenToLock - tokenToUnlock)
+      expect(await safeTokenLock.userTokenBalance(alice)).to.equal(tokenToLock - tokenToUnlock)
     })
   })
 
