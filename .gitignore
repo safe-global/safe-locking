@@ -19,3 +19,10 @@ build/
 dist/
 deployments/
 .vscode
+
+# Certora Mutation files
+certora_debug_log.txt
+collect.json
+mutation.conf
+resource_errors.json
+splitStatsdata.json

@@ -121,6 +121,14 @@ NOTE: To run E2E test, `INFURA_KEY` in `.env` with the appropriate value to fork
 npm run test:all
 ```
 
+### Formal Verification
+
+#### Mutation
+
+```bash
+certoraMutate --prover_conf certora/conf/safeTokenLock.conf --mutation_conf mutation.conf
+```
+
 ### Deploy
 
 > :warning: **Make sure to use the correct commit when deploying the contracts.** Any change (even comments) within the contract files will result in different addresses. The tagged versions can be found in the [releases](https://github.com/safe-global/safe-locking/releases).

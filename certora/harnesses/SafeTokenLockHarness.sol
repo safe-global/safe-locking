@@ -9,11 +9,19 @@ contract SafeTokenLockHarness is SafeTokenLock {
     ) SafeTokenLock(_initialOwner, _safeTokenAddress, _cooldownPeriod) {}
 
     // harnessed getter function
-    function getStartAndEnd(address userAddress) external returns (uint32, uint32) {
+    function getStartAndEnd(address userAddress) external view returns (uint32, uint32) {
         return (users[userAddress].unlockStart, users[userAddress].unlockEnd);
     }
 
     function getSafeTokenAddress() external view returns (address) {
         return address(SAFE_TOKEN);
+    }
+
+    function getUserUnlockSum(address holder) external view returns (uint256 amount) {
+        User memory user = users[holder];
+        for (uint32 i = user.unlockStart; i < user.unlockEnd; i++) {
+            UnlockInfo memory unlock = unlocks[i][holder];
+            amount += unlock.amount;
+        }
     }
 }
