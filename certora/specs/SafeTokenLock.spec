@@ -1,154 +1,262 @@
-using SafeTokenHarness as safeTokenContract;
+using SafeToken as safeTokenContract;
 
 methods {
-    // SafeTokenLock functions
-    function lock(uint96) external returns(uint32);
-    function unlock(uint32, uint96) external returns(bool);
-    function withdraw(uint32) external returns (uint96);
-    function getUser(address holder) external returns(ISafeTokenLock.User memory) envfree;
-    function getUnlock(address holder, uint32 index) external returns(ISafeTokenLock.UnlockInfo memory) envfree;
+    function COOLDOWN_PERIOD() external returns (uint64) envfree;
+    function getUnlock(address userAddress, uint32 index) external returns (SafeTokenLock.UnlockInfo memory) envfree;
+    function getUser(address userAddress) external returns (SafeTokenLock.User memory) envfree;
+    function owner() external returns (address) envfree;
+    function pendingOwner() external returns (address) envfree;
+    function totalBalance(address holder) external returns (uint96) envfree;
 
-    // Harnessed functions
-    function getStartAndEnd(address userAddress) external returns(uint32, uint32) envfree;
+    function getUnlockSum(address holder) external returns (uint256) envfree;
+    function getMinUnlockAmount(address holder) external returns (uint256) envfree;
+    function getLastUnlockTimestamp(address holder) external returns (int256) envfree;
 
-    // SafeToken functions
-    function safeTokenContract.balanceOf(address) external returns(uint256) envfree;
+    function SafeToken.balanceOf(address account) external returns (uint256) envfree;
+    function SafeToken.paused() external returns (bool) envfree;
+    function SafeToken.totalSupply() external returns (uint256) envfree;
 
-    // Prevent SafeTokenHarness.transfer to cause HAVOC
-    function _.transfer(address,uint256) external => NONDET UNRESOLVED;
+    function _.transfer(address, uint256) external => NONDET UNRESOLVED;
 }
 
-ghost mapping(address => mathint) userUnlocks {
-    init_state axiom forall address X.userUnlocks[X] == 0;
+invariant unlockStartBeforeEnd(address holder)
+    getUser(holder).unlockStart <= getUser(holder).unlockEnd;
+
+invariant unlockedIsSumOfUnlockAmounts(address holder)
+    to_mathint(getUser(holder).unlocked) == to_mathint(getUnlockSum(holder))
+    {
+        preserved {
+            requireInvariant unlockStartBeforeEnd(holder);
+        }
+    }
+
+rule getUserNeverReverts() {
+    address holder;
+    getUser@withrevert(holder);
+    assert !lastReverted;
 }
 
-ghost mapping(address => mathint) userLocks {
-    init_state axiom forall address X.userLocks[X] == 0;
+rule getUnlockNeverReverts() {
+    address holder;
+    uint32 index;
+    getUnlock@withrevert(holder, index);
+    assert !lastReverted;
 }
 
-hook Sload uint96 v currentContract._users[KEY address user].locked STORAGE {
-    require userLocks[user] == to_mathint(v);
+rule getUnlockSumNeverReverts() {
+    address holder;
+    getUnlockSum@withrevert(holder);
+    assert !lastReverted;
 }
 
-hook Sload uint96 v currentContract._users[KEY address user].unlocked STORAGE { 
-    require userUnlocks[user] == to_mathint(v);
-}
+definition MAX_UINT32() returns mathint = 2^32 - 1;
+definition MAX_UINT64() returns mathint = 2^64 - 1;
+definition TOTAL_SUPPLY() returns mathint = 10^27;
 
-// Used to track total sum of locked tokens
-ghost mathint ghostLocked {
-    init_state axiom ghostLocked == 0;
-}
-ghost mathint ghostUnlocked {
-    init_state axiom ghostUnlocked == 0;
-}
-
-rule doesNotAffectOtherUserBalance(method f) {
-    env e;  
-    address otherUser;
-    calldataarg args;
-    require (e.msg.sender != otherUser);
-
-    uint96 otherUserBalanceBefore = totalBalance(e, otherUser);
-    f(e,args);
-    assert totalBalance(e, otherUser) == otherUserBalanceBefore;
-}
-
-rule cannotWithdrawMoreThanUnlocked() {
+rule canAlwaysUnlock() {
     env e;
-    uint256 balanceBefore = safeTokenContract.balanceOf(e, e.msg.sender);
-    mathint beforeWithdraw = userUnlocks[e.msg.sender];
-    withdraw(e, 0);
-    require !lastReverted;
-    uint256 balanceAfter = safeTokenContract.balanceOf(e, e.msg.sender);
-    assert to_mathint(balanceAfter) <= balanceBefore + beforeWithdraw;
-}
-
-rule cannotWithdrawBeforeCooldown() {
-    uint32 i;
-    uint32 start;
-    uint32 end;
-    env e;
-    uint256 maturesAtTimestamp;
     uint96 amount;
 
-    start, end = getStartAndEnd(e.msg.sender);
+    SafeTokenLock.User userBefore = getUser(e.msg.sender);
 
-    require start == i && end != i;
+    require e.block.timestamp + COOLDOWN_PERIOD() <= MAX_UINT64();
+    require userBefore.unlockEnd + 1 <= MAX_UINT32();
+    require userBefore.locked + userBefore.unlocked <= safeToken.totalSupply();
 
-    ISafeTokenLock.UnlockInfo unlockInfo = getUnlock(e.msg.sender, i);
-    maturesAtTimestamp = unlockInfo.unlockedAt;
-    amount = unlockInfo.amount;
-    require maturesAtTimestamp > e.block.timestamp && amount > 0;
-    uint96 amountWithdrawn;
+    unlock@withrevert(e, amount);
 
+    if (e.msg.value == 0 && amount > 0 && amount <= userBefore.locked) {
+        assert !lastReverted;
+    } else {
+        assert lastReverted;
+    }
+}
+
+rule allLockedGetUnlocked(method f) filtered {
+    f -> !f.isView
+} {
+    env e;
+    calldataarg arg;
+
+    SafeTokenLock.User userBefore = getUser(e.msg.sender);
+    f(e, arg);
+    SafeTokenLock.User userAfter = getUser(e.msg.sender);
+
+    assert userBefore.locked > userAfter.locked
+        => userBefore.locked - userAfter.locked
+            == userAfter.unlocked - userBefore.unlocked;
+}
+
+rule onlyHolderCanChangeBalance(address holder, method f) filtered {
+    f -> !f.isView
+} {
+    env e;
+    calldataarg arg;
+
+    SafeTokenLock.User userBefore = getUser(holder);
+    f(e, arg);
+    SafeTokenLock.User userAfter = getUser(holder);
+
+    assert userBefore.locked != userAfter.locked || userBefore.unlocked != userAfter.unlocked
+        => e.msg.sender == holder;
+}
+
+rule ownerCanAlwaysTransferOwnership(address newOwner) {
+    env e;
+
+    require e.msg.sender == owner();
     require e.msg.value == 0;
 
-    amountWithdrawn = withdraw@withrevert(e, 0);
-    assert !lastReverted && amountWithdrawn == 0;
+    transferOwnership@withrevert(e, newOwner);
+
+    assert !lastReverted;
+    assert owner() == e.msg.sender;
+    assert pendingOwner() == newOwner;
 }
 
-rule unlockTimeDoesNotChange(method f) {
-    uint32 i;
-    uint32 start;
-    uint32 end;
+rule pendingOwnerCanAlwaysAcceptOwnership() {
     env e;
-    mathint maturesAtTimestamp;
-    uint96 amount;
-    address user;
 
-    ISafeTokenLock.User user1 = getUser(user);
+    require e.msg.sender == pendingOwner();
+    require e.msg.value == 0;
 
-    require user1.unlockStart == i && user1.unlockEnd != i;
+    acceptOwnership@withrevert(e);
 
-    ISafeTokenLock.UnlockInfo unlockInfo = getUnlock(user, i);
-
-    calldataarg args;
-   
-    maturesAtTimestamp = unlockInfo.unlockedAt;
-    amount = unlockInfo.amount;
-    require maturesAtTimestamp > to_mathint(e.block.timestamp) && amount > 0;
-
-
-    f(e, args);
-
-    ISafeTokenLock.UnlockInfo unlockInfo2 = getUnlock(user, i);
-    ISafeTokenLock.User user2 = getUser(user);
-
-    assert user1.unlockStart == user2.unlockStart;
-    assert maturesAtTimestamp == to_mathint(unlockInfo2.unlockedAt);
+    assert !lastReverted;
+    assert owner() == e.msg.sender;
+    assert pendingOwner() == 0;
 }
 
-// hook to update sum of locked tokens whenever user struct is updated
-hook Sstore SafeTokenLockHarness._users[KEY address user].locked uint96 value (uint96 old_value) STORAGE {
-    ghostLocked = ghostLocked + (value - old_value);
-    userLocks[user] = value;
+rule ownerCanAlwaysRenounceOwnership() {
+    env e;
+
+    require e.msg.sender == owner();
+    require e.msg.value == 0;
+
+    renounceOwnership@withrevert(e);
+
+    assert !lastReverted;
+    assert owner() == 0;
+    assert pendingOwner() == 0;
 }
 
-// hook to update sum of unlocked tokens whenever user struct is updated
-hook Sstore SafeTokenLockHarness._users[KEY address key].unlocked uint96 value (uint96 old_value) STORAGE {
-    ghostUnlocked = ghostUnlocked + (value - old_value);
-    userUnlocks[key] = value;
+rule onlyOwnerOrPendingOwnerCanChangeOwner(method f) filtered {
+    f -> !f.isView
+} {
+    env e;
+    calldataarg arg;
+
+    address pendingOwnerBefore = pendingOwner();
+    address ownerBefore = owner();
+
+    f(e, arg);
+
+    assert owner() != ownerBefore
+        => e.msg.sender == ownerBefore || e.msg.sender == pendingOwnerBefore;
 }
 
-// atleast 1 good case that user can withdraw all tokens using satisfy
-rule possibleToFullyWithdraw(address sender, uint96 amount) {
-    
-    env eL; // env for lock
-    env eU; // env for unlock
-    env eW; // env for withdraw
-    uint256 balanceBefore = safeTokenContract.balanceOf(sender);
-    require eL.msg.sender == sender;
-    require eU.msg.sender == sender;
-    require eW.msg.sender == sender;
+rule onlyOwnerOrPendingOwnerCanChangePendingOwner(method f) filtered {
+    f -> !f.isView
+} {
+    env e;
+    calldataarg arg;
 
-    require amount > 0;
-    lock(eL, amount);
+    address pendingOwnerBefore = pendingOwner();
+    address ownerBefore = owner();
 
-    uint96 unlockAmount;
-    require unlockAmount <= amount;
+    f(e, arg);
 
-    unlock(eU, unlockAmount);
+    assert pendingOwner() != pendingOwnerBefore
+        => e.msg.sender == ownerBefore || e.msg.sender == pendingOwnerBefore;
+}
 
-    withdraw(eW, 0);
-    satisfy (balanceBefore == safeTokenContract.balanceOf(sender));
+invariant unlocksHaveNonZeroAmounts(address holder)
+    getMinUnlockAmount(holder) > 0;
+
+invariant unlocksAreOrdered(address holder)
+    getLastUnlockTimestamp(holder) >= 0
+    {
+        preserved with (env e) {
+            requireInvariant unlocksHaveNonZeroAmounts(holder);
+            require to_mathint(e.block.timestamp) >= to_mathint(getLastUnlockTimestamp(holder));
+            require e.block.timestamp + COOLDOWN_PERIOD() <= MAX_UINT64();
+        }
+    }
+
+rule getLastUnlockTimestampNeverReverts() {
+    address holder;
+    getLastUnlockTimestamp@withrevert(holder);
+    assert !lastReverted;
+}
+
+rule getLastUnlockTimestampReturnsLastUnlockTimestamp(method f, address holder) filtered {
+    f -> !f.isView
+} {
+    env e;
+    calldataarg arg;
+
+    int256 lastUnlockTimestampBefore = getLastUnlockTimestamp(holder);
+    require to_mathint(e.block.timestamp) >= to_mathint(lastUnlockTimestampBefore);
+
+    f(e, arg);
+
+    int256 lastUnlockTimestampAfter = getLastUnlockTimestamp(holder);
+
+    if (f.selector == sig:unlock(uint96).selector && e.msg.sender == holder) {
+        assert to_mathint(lastUnlockTimestampAfter) == to_mathint(e.block.timestamp);
+    } else if (f.selector == sig:withdraw(uint32).selector && e.msg.sender == holder) {
+        assert lastUnlockTimestampAfter == lastUnlockTimestampBefore
+            || lastUnlockTimestampAfter == 0;
+    } else {
+        assert lastUnlockTimestampBefore == lastUnlockTimestampAfter;
+    }
+}
+
+invariant addressZeroCannotLock()
+    totalBalance(0) == 0;
+
+invariant safeTokenSelfBalanceIsZero()
+    safeTokenContract.balanceOf(safeTokenContract) == 0;
+
+invariant safeTokenCannotLock()
+    totalBalance(safeTokenContract) == 0
+    {
+        preserved {
+            requireInvariant safeTokenSelfBalanceIsZero();
+        }
+    }
+
+rule canAlwaysWithdrawEverythingAfterCooldownPeriod() {
+    env e;
+
+    requireInvariant unlockStartBeforeEnd(e.msg.sender);
+    requireInvariant unlockedIsSumOfUnlockAmounts(e.msg.sender);
+    requireInvariant unlocksAreOrdered(e.msg.sender);
+    requireInvariant unlocksHaveNonZeroAmounts(e.msg.sender);
+    requireInvariant addressZeroCannotLock();
+    requireInvariant safeTokenCannotLock();
+    require e.msg.value == 0;
+    require to_mathint(e.block.timestamp)
+        >= getLastUnlockTimestamp(e.msg.sender) + COOLDOWN_PERIOD();
+    require !safeTokenContract.paused();
+
+    // TODO(nlordell): These should be invariants
+    require to_mathint(safeTokenContract.balanceOf(currentContract))
+        >= to_mathint(totalBalance(e.msg.sender));
+    require safeTokenContract.balanceOf(e.msg.sender) + safeTokenContract.balanceOf(currentContract)
+        <= to_mathint(safeTokenContract.totalSupply());
+
+    SafeTokenLock.User userBefore = getUser(e.msg.sender);
+
+    uint256 amount = withdraw@withrevert(e, 0);
+    assert !lastReverted;
+
+    SafeTokenLock.User userAfter = getUser(e.msg.sender);
+
+    assert amount != 0
+        => userBefore.unlockStart != userBefore.unlockEnd;
+    assert to_mathint(userBefore.unlocked) == to_mathint(amount);
+    assert userAfter.unlocked == 0;
+    assert userAfter.unlockStart == userAfter.unlockEnd;
+    assert userAfter.unlockEnd == userBefore.unlockEnd;
 }
