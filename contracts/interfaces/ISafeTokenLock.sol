@@ -10,10 +10,11 @@ pragma solidity 0.8.23;
 interface ISafeTokenLock {
     /**
      * @notice Contains the user locked and unlocked token information, along with unlock indexes.
-     * @param locked Contains the total locked token by a particular user.
-     * @param unlocked Contains the total unlocked token by a particular user.
-     * @param unlockStart Zero or ID of Oldest unlock operation created which is yet to be withdrawn.
-     * @param unlockEnd Next unlock Id = unlockEnd++
+     * @param locked Contains the total locked token amount for the user.
+     * @param unlocked Contains the total unlocked token amount for the user.
+     * @param unlockStart The index of the next unlock for the user.
+     * @param unlockEnd The end index of the unlocks.
+     * @dev Note that `unlockEnd` does not correspond to an index of an active unlock but instead the index of the next unlock to be added.
      */
     struct User {
         uint96 locked;
@@ -24,10 +25,10 @@ interface ISafeTokenLock {
 
     /**
      * @notice Contains the unlock amount and unlock time.
-     * @param amount The amount of tokens to be unlocked.
-     * @param unlockedAt The time at which the tokens will be unlocked.
-     * @dev For 1 Billion Safe Tokens, uint96 is enough. 10 ** 27 < 2 ** 96.
-     *      uint64 is valid for billions of years.
+     * @param amount The amount of tokens for the unlock.
+     * @param unlockedAt The timestamp the unlock will mature at, and become available for withdrawal.
+     * @dev For total supply of Safe tokens (1 billion), {uint96} is enough: `10 ** 27 < 2 ** 96`.
+     *      {uint64} is valid for billions of years.
      */
     struct UnlockInfo {
         uint96 amount;
