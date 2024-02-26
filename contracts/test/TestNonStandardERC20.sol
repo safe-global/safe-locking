@@ -22,8 +22,6 @@ contract TestNonStandardERC20 {
             }
         } else if (BEHAVIOUR == Behaviour.RETURN_NOTHING_ON_SUCCESS) {
             return;
-        } else {
-            revert("not implemented");
         }
     }
 }
