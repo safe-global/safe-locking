@@ -8,18 +8,31 @@ pragma solidity 0.8.23;
  * @custom:security-contact bounty@safe.global
  */
 interface ISafeTokenLock {
-    // struct User containing the user locked and unlocked token information, along with unlock indexes.
+    /**
+     * @notice Contains the user locked and unlocked token information, along with unlock indexes.
+     * @param locked Contains the total locked token by a particular user.
+     * @param unlocked Contains the total unlocked token by a particular user.
+     * @param unlockStart Zero or ID of Oldest unlock operation created which is yet to be withdrawn.
+     * @param unlockEnd Next unlock Id = unlockEnd++
+     */
     struct User {
-        uint96 locked; // Contains the total locked token by a particular user.
-        uint96 unlocked; // Contains the total unlocked token by a particular user.
-        uint32 unlockStart; // Zero or ID of Oldest unlock operation created which is yet to be withdrawn.
-        uint32 unlockEnd; // Next unlock Id = unlockEnd++
+        uint96 locked;
+        uint96 unlocked;
+        uint32 unlockStart;
+        uint32 unlockEnd;
     }
 
     // struct UnlockInfo containing the unlock amount and unlock time.
+    /**
+     * @notice Contains the unlock amount and unlock time.
+     * @param amount The amount of tokens to be unlocked.
+     * @param unlockedAt The time at which the tokens will be unlocked.
+     * @dev For 1 Billion Safe Tokens, uint96 is enough. 10 ** 27 < 2 ** 96.
+     *      uint64 is valid for billions of years.
+     */
     struct UnlockInfo {
-        uint96 amount; // For 1 Billion Safe Tokens, this is enough. 10 ** 27 < 2 ** 96
-        uint64 unlockedAt; // Valid for billions of years.
+        uint96 amount;
+        uint64 unlockedAt;
     }
 
     /**
