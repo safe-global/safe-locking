@@ -54,6 +54,9 @@ invariant safeTokenSelfBalanceIsZero()
     safeTokenContract.balanceOf(safeTokenContract) == 0;
 
 // Verify that Safe Token Contract cannot lock tokens.
+// While this invariant is not important for the Safe locking contract per se,
+// having the Safe token contract lock or hold balance could cause strange behaviours
+// and cuase other rules and invariants to not hold.
 invariant safeTokenCannotLock()
     userTokenBalance(safeTokenContract) == 0
     {
