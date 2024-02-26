@@ -7,6 +7,7 @@ methods {
     function withdraw(uint32) external returns (uint96);
     function getUser(address holder) external returns(ISafeTokenLock.User memory) envfree;
     function getUnlock(address holder, uint32 index) external returns(ISafeTokenLock.UnlockInfo memory) envfree;
+    function userTokenBalance(address holder) external returns (uint96) envfree;
 
     // Harnessed functions
     function getStartAndEnd(address userAddress) external returns(uint32, uint32) envfree;
@@ -47,6 +48,22 @@ hook Sstore SafeTokenLockHarness._users[KEY address key].unlocked uint96 value (
     ghostTotalUnlocked = ghostTotalUnlocked + (value - oldValue);
     ghostUserUnlocks[key] = value;
 }
+
+// Verify that Safe Token Contract's Safe Token balance is always zero.
+invariant safeTokenSelfBalanceIsZero()
+    safeTokenContract.balanceOf(safeTokenContract) == 0;
+
+// Verify that Safe Token Contract cannot lock tokens.
+// While this invariant is not important for the Safe locking contract per se,
+// having the Safe token contract lock or hold balance could cause strange behaviours
+// and cuase other rules and invariants to not hold.
+invariant safeTokenCannotLock()
+    userTokenBalance(safeTokenContract) == 0
+    {
+        preserved {
+            requireInvariant safeTokenSelfBalanceIsZero();
+        }
+    }
 
 // Verify that no operations on the Safe token locking contract done by user A
 // can affect the Safe token balance of user B in the locking contract.
