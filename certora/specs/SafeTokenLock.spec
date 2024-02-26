@@ -40,7 +40,7 @@ ghost mathint ghostTotalUnlocked {
 ghost mapping(address => mathint) ghostUserUnlocks {
     init_state axiom forall address holder. ghostUserUnlocks[holder] == 0;
 }
-hook Sload uint96 value currentContract._users[KEY address user].unlocked STORAGE { 
+hook Sload uint96 value currentContract._users[KEY address user].unlocked STORAGE {
     require ghostUserUnlocks[user] == to_mathint(value);
 }
 hook Sstore SafeTokenLockHarness._users[KEY address key].unlocked uint96 value (uint96 oldValue) STORAGE {
@@ -49,20 +49,19 @@ hook Sstore SafeTokenLockHarness._users[KEY address key].unlocked uint96 value (
 }
 
 // Verify that no operations on the Safe token locking contract done by user A
-// can affect the Safe token balance of user B
-rule doesNotAffectOtherUserBalance(method f) filtered {
+// can affect the Safe token balance of user B in the locking contract.
+rule doesNotAffectOtherUserBalance(method f, address holder) filtered {
     f -> !f.isView
 } {
-    env e;  
-    address otherUser;
+    env e;
     calldataarg args;
 
-    require (e.msg.sender != otherUser);
-    uint96 otherUserBalanceBefore = userTokenBalance(e, otherUser);
+    require (e.msg.sender != holder);
+    uint96 balanceBefore = userTokenBalance(e, holder);
 
     f(e,args);
 
-    assert userTokenBalance(e, otherUser) == otherUserBalanceBefore;
+    assert userTokenBalance(e, holder) == balanceBefore;
 }
 
 // Verify that withdrawal cannot increase the balance of a user more than their
@@ -94,13 +93,12 @@ rule cannotWithdrawBeforeCooldown() {
 
 // Verify that it is impossible for a user to modify the time at which their
 // unlock matures and can be withdrawn.
-rule unlockTimeDoesNotChange(method f) filtered {
+rule unlockTimeDoesNotChange(method f, address holder) filtered {
     f -> !f.isView
 } {
     env e;
     calldataarg args;
 
-    address holder;
     ISafeTokenLock.User userBefore = getUser(holder);
     uint32 index = userBefore.unlockStart;
     ISafeTokenLock.UnlockInfo unlockBefore = getUnlock(holder, index);
