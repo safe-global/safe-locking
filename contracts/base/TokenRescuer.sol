@@ -14,18 +14,18 @@ abstract contract TokenRescuer is Ownable2Step {
     using SafeERC20 for IERC20;
 
     /**
-     * @dev Hook that gets called before a rescuing a token.
-     * @param token Token that should be rescued
-     * @param beneficiary The account that should receive the tokens
-     * @param amount Amount of tokens that should be rescued
+     * @dev Hook that gets called before rescuing a token.
+     * @param token Token that should be rescued.
+     * @param beneficiary The account that should receive the tokens.
+     * @param amount Amount of tokens that should be rescued.
      */
     function _beforeTokenRescue(address token, address beneficiary, uint256 amount) internal virtual {}
 
     /**
      * @notice Rescues the specified `amount` of `tokens` to `beneficiary`. Can only be called by the {owner}.
-     * @param token Token that should be rescued
-     * @param beneficiary The account that should receive the tokens
-     * @param amount Amount of tokens that should be rescued
+     * @param token Token that should be rescued.
+     * @param beneficiary The account that should receive the tokens.
+     * @param amount Amount of tokens that should be rescued.
      */
     function rescueToken(address token, address beneficiary, uint256 amount) external onlyOwner {
         _beforeTokenRescue(token, beneficiary, amount);

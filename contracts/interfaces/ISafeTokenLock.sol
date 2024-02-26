@@ -8,19 +8,54 @@ pragma solidity 0.8.23;
  * @custom:security-contact bounty@safe.global
  */
 interface ISafeTokenLock {
+    /**
+     * @notice Contains the user locked and unlocked token information, along with unlock indexes.
+     * @param locked Contains the total locked token amount for the user.
+     * @param unlocked Contains the total unlocked token amount for the user.
+     * @param unlockStart The index of the next unlock for the user.
+     * @param unlockEnd The end index of the unlocks.
+     * @dev Note that `unlockEnd` does not correspond to an index of an active unlock but instead the index of the next unlock to be added.
+     */
     struct User {
-        uint96 locked; // Contains the total locked token by a particular user.
-        uint96 unlocked; // Contains the total unlocked token by a particular user.
-        uint32 unlockStart; // Zero or ID of Oldest unlock operation created which is yet to be withdrawn.
-        uint32 unlockEnd; // Next unlock Id = unlockEnd++
-    }
-    struct UnlockInfo {
-        uint96 amount; // For 1 Billion Safe Tokens, this is enough. 10 ** 27 < 2 ** 96
-        uint64 unlockedAt; // Valid until Year: 2554.
+        uint96 locked;
+        uint96 unlocked;
+        uint32 unlockStart;
+        uint32 unlockEnd;
     }
 
+    /**
+     * @notice Contains the unlock amount and unlock time.
+     * @param amount The amount of tokens for the unlock.
+     * @param unlockedAt The timestamp the unlock will mature at, and become available for withdrawal.
+     * @dev For total supply of Safe tokens (1 billion), {uint96} is enough: `10 ** 27 < 2 ** 96`.
+     *      {uint64} is valid for billions of years.
+     */
+    struct UnlockInfo {
+        uint96 amount;
+        uint64 unlockedAt;
+    }
+
+    /**
+     * @notice Emitted when tokens are locked.
+     * @param holder The address of the user who locked the tokens.
+     * @param amount The amount of tokens locked.
+     */
     event Locked(address indexed holder, uint96 amount);
+
+    /**
+     * @notice Emitted when tokens are unlocked.
+     * @param holder The address of the user who unlocked the tokens.
+     * @param index The index of the unlock operation.
+     * @param amount The amount of tokens unlocked.
+     */
     event Unlocked(address indexed holder, uint32 indexed index, uint96 amount);
+
+    /**
+     * @notice Emitted when tokens are withdrawn.
+     * @param holder The address of the user who withdrew the tokens.
+     * @param index The index of the unlock operation which is withdrawn.
+     * @param amount The amount of tokens withdrawn.
+     */
     event Withdrawn(address indexed holder, uint32 indexed index, uint96 amount);
 
     /**
