@@ -22,7 +22,6 @@ interface ISafeTokenLock {
         uint32 unlockEnd;
     }
 
-    // struct UnlockInfo containing the unlock amount and unlock time.
     /**
      * @notice Contains the unlock amount and unlock time.
      * @param amount The amount of tokens to be unlocked.
