@@ -18,7 +18,7 @@ methods {
     function _.transfer(address,uint256) external => NONDET UNRESOLVED;
 }
 
-//
+// Ghost variables that track the total and per-user lock amounts.
 ghost mapping(address => mathint) ghostUserLocks {
     init_state axiom forall address holder. ghostUserLocks[holder] == 0;
 }
@@ -33,6 +33,7 @@ hook Sstore SafeTokenLockHarness._users[KEY address user].locked uint96 value (u
     ghostUserLocks[user] = value;
 }
 
+// Ghost variables that track the total and per-user unlock amounts.
 ghost mathint ghostTotalUnlocked {
     init_state axiom ghostTotalUnlocked == 0;
 }
@@ -47,8 +48,8 @@ hook Sstore SafeTokenLockHarness._users[KEY address key].unlocked uint96 value (
     ghostUserUnlocks[key] = value;
 }
 
-// Verify that for no operations on the Safe token locking contract done by user
-// A can affect the Safe token balance of user B
+// Verify that no operations on the Safe token locking contract done by user A
+// can affect the Safe token balance of user B
 rule doesNotAffectOtherUserBalance(method f) filtered {
     f -> !f.isView
 } {
@@ -64,9 +65,9 @@ rule doesNotAffectOtherUserBalance(method f) filtered {
     assert userTokenBalance(e, otherUser) == otherUserBalanceBefore;
 }
 
-// Verify that withdrawal cannot increase the balance of a user more than the
-// their total unlocked amount, that is, it is impossible to withdraw tokens
-// without having previously unlocked them.
+// Verify that withdrawal cannot increase the balance of a user more than their
+// total unlocked amount, i.e. it is impossible to withdraw tokens without
+// having previously unlocked them.
 rule cannotWithdrawMoreThanUnlocked() {
     env e;
 
