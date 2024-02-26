@@ -38,6 +38,7 @@ const soliditySettings = SOLIDITY_SETTINGS
   ? JSON.parse(SOLIDITY_SETTINGS)
   : {
       evmVersion: 'paris',
+      viaIR: true,
       optimizer: {
         enabled: true,
         runs: 10_000_000,
