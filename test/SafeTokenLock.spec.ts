@@ -963,22 +963,7 @@ describe('SafeTokenLock', function () {
   })
 
   describe('Token Rescue', function () {
-    it('Should not allow non-owner to recover', async () => {
-      const { safeTokenLock, alice } = await setupTests()
-      expect(safeTokenLock.connect(alice).rescueToken(ZeroAddress, ZeroAddress, 0))
-        .to.be.revertedWithCustomError(safeTokenLock, 'OwnableUnauthorizedAccount')
-        .withArgs(alice)
-    })
-
-    it('Should not allow Safe token recovery', async () => {
-      const { safeToken, safeTokenLock, owner } = await setupTests()
-      expect(safeTokenLock.connect(owner).rescueToken(safeToken, ZeroAddress, 0)).to.be.revertedWithCustomError(
-        safeTokenLock,
-        'CannotRecoverSafeToken',
-      )
-    })
-
-    it('Should allow ERC20 recovery other than Safe token', async () => {
+    it('Should allow rescuing tokens other other than Safe token', async () => {
       const { safeToken, safeTokenLock, owner, alice } = await setupTests()
       const erc20 = await (await ethers.getContractFactory('TestERC20')).deploy('TEST', 'TEST')
 
@@ -1011,6 +996,21 @@ describe('SafeTokenLock', function () {
 
       await expect(safeTokenLock.connect(owner).rescueToken(erc20ReturnFalseOnFailure, owner, 1)).to.be.reverted
       await expect(safeTokenLock.connect(owner).rescueToken(erc20ReturnNothingOnSuccess, owner, 1)).to.not.be.reverted
+    })
+
+    it('Should not allow rescuing Safe token', async () => {
+      const { safeToken, safeTokenLock, owner } = await setupTests()
+      expect(safeTokenLock.connect(owner).rescueToken(safeToken, ZeroAddress, 0)).to.be.revertedWithCustomError(
+        safeTokenLock,
+        'CannotRecoverSafeToken',
+      )
+    })
+
+    it('Should not allow rescuing as non-owner', async () => {
+      const { safeTokenLock, alice } = await setupTests()
+      expect(safeTokenLock.connect(alice).rescueToken(ZeroAddress, ZeroAddress, 0))
+        .to.be.revertedWithCustomError(safeTokenLock, 'OwnableUnauthorizedAccount')
+        .withArgs(alice)
     })
   })
 
