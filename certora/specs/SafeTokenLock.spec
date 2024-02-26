@@ -18,121 +18,110 @@ methods {
     function _.transfer(address,uint256) external => NONDET UNRESOLVED;
 }
 
-ghost mapping(address => mathint) userUnlocks {
-    init_state axiom forall address X.userUnlocks[X] == 0;
+//
+ghost mapping(address => mathint) ghostUserLocks {
+    init_state axiom forall address holder. ghostUserLocks[holder] == 0;
+}
+ghost mathint ghostTotalLocked {
+    init_state axiom ghostTotalLocked == 0;
+}
+hook Sload uint96 value currentContract._users[KEY address user].locked STORAGE {
+    require ghostUserLocks[user] == to_mathint(value);
+}
+hook Sstore SafeTokenLockHarness._users[KEY address user].locked uint96 value (uint96 oldValue) STORAGE {
+    ghostTotalLocked = ghostTotalLocked + (value - oldValue);
+    ghostUserLocks[user] = value;
 }
 
-ghost mapping(address => mathint) userLocks {
-    init_state axiom forall address X.userLocks[X] == 0;
+ghost mathint ghostTotalUnlocked {
+    init_state axiom ghostTotalUnlocked == 0;
+}
+ghost mapping(address => mathint) ghostUserUnlocks {
+    init_state axiom forall address holder. ghostUserUnlocks[holder] == 0;
+}
+hook Sload uint96 value currentContract._users[KEY address user].unlocked STORAGE { 
+    require ghostUserUnlocks[user] == to_mathint(value);
+}
+hook Sstore SafeTokenLockHarness._users[KEY address key].unlocked uint96 value (uint96 oldValue) STORAGE {
+    ghostTotalUnlocked = ghostTotalUnlocked + (value - oldValue);
+    ghostUserUnlocks[key] = value;
 }
 
-hook Sload uint96 v currentContract._users[KEY address user].locked STORAGE {
-    require userLocks[user] == to_mathint(v);
-}
-
-hook Sload uint96 v currentContract._users[KEY address user].unlocked STORAGE { 
-    require userUnlocks[user] == to_mathint(v);
-}
-
-// Used to track total sum of locked tokens
-ghost mathint ghostLocked {
-    init_state axiom ghostLocked == 0;
-}
-ghost mathint ghostUnlocked {
-    init_state axiom ghostUnlocked == 0;
-}
-
-rule doesNotAffectOtherUserBalance(method f) {
+// Verify that for no operations on the Safe token locking contract done by user
+// A can affect the Safe token balance of user B
+rule doesNotAffectOtherUserBalance(method f) filtered {
+    f -> !f.isView
+} {
     env e;  
     address otherUser;
     calldataarg args;
-    require (e.msg.sender != otherUser);
 
+    require (e.msg.sender != otherUser);
     uint96 otherUserBalanceBefore = userTokenBalance(e, otherUser);
+
     f(e,args);
+
     assert userTokenBalance(e, otherUser) == otherUserBalanceBefore;
 }
 
+// Verify that withdrawal cannot increase the balance of a user more than the
+// their total unlocked amount, that is, it is impossible to withdraw tokens
+// without having previously unlocked them.
 rule cannotWithdrawMoreThanUnlocked() {
     env e;
-    uint256 balanceBefore = safeTokenContract.balanceOf(e, e.msg.sender);
-    mathint beforeWithdraw = userUnlocks[e.msg.sender];
-    withdraw(e, 0);
-    require !lastReverted;
-    uint256 balanceAfter = safeTokenContract.balanceOf(e, e.msg.sender);
-    assert to_mathint(balanceAfter) <= balanceBefore + beforeWithdraw;
+
+    uint256 balanceBefore = safeTokenContract.balanceOf(e.msg.sender);
+    mathint unlockedBefore = getUser(e.msg.sender).unlocked;
+
+    withdraw(e, _);
+
+    uint256 balanceAfter = safeTokenContract.balanceOf(e.msg.sender);
+    assert to_mathint(balanceAfter) <= balanceBefore + unlockedBefore;
 }
 
+// Verify that unlock tokens can only be withdrawn once they mature.
 rule cannotWithdrawBeforeCooldown() {
-    uint32 i;
-    uint32 start;
-    uint32 end;
     env e;
-    uint256 maturesAtTimestamp;
-    uint96 amount;
 
-    start, end = getStartAndEnd(e.msg.sender);
+    ISafeTokenLock.UnlockInfo unlock = getUnlock(e.msg.sender, getUser(e.msg.sender).unlockStart);
 
-    require start == i && end != i;
+    uint96 amountWithdrawn = withdraw(e, _);
 
-    ISafeTokenLock.UnlockInfo unlockInfo = getUnlock(e.msg.sender, i);
-    maturesAtTimestamp = unlockInfo.unlockedAt;
-    amount = unlockInfo.amount;
-    require maturesAtTimestamp > e.block.timestamp && amount > 0;
-    uint96 amountWithdrawn;
-
-    require e.msg.value == 0;
-
-    amountWithdrawn = withdraw@withrevert(e, 0);
-    assert !lastReverted && amountWithdrawn == 0;
+    assert to_mathint(e.block.timestamp) < to_mathint(unlock.unlockedAt)
+        => amountWithdrawn == 0;
 }
 
+// Verify that it is impossible for a user to modify the time at which their
+// unlock matures and can be withdrawn.
 rule unlockTimeDoesNotChange(method f) {
-    uint32 i;
-    uint32 start;
-    uint32 end;
     env e;
-    mathint maturesAtTimestamp;
-    uint96 amount;
-    address user;
-
-    ISafeTokenLock.User user1 = getUser(user);
-
-    require user1.unlockStart == i && user1.unlockEnd != i;
-
-    ISafeTokenLock.UnlockInfo unlockInfo = getUnlock(user, i);
-
     calldataarg args;
-   
-    maturesAtTimestamp = unlockInfo.unlockedAt;
-    amount = unlockInfo.amount;
-    require maturesAtTimestamp > to_mathint(e.block.timestamp) && amount > 0;
 
+    address holder;
+    ISafeTokenLock.User userBefore = getUser(holder);
+    uint32 index = userBefore.unlockStart;
+    ISafeTokenLock.UnlockInfo unlockBefore = getUnlock(holder, index);
+
+    require userBefore.unlockStart < userBefore.unlockEnd;
+    // TODO: This `require` should be `requireInvariant` once it gets added.
+    require unlockBefore.amount > 0;
 
     f(e, args);
 
-    ISafeTokenLock.UnlockInfo unlockInfo2 = getUnlock(user, i);
-    ISafeTokenLock.User user2 = getUser(user);
+    ISafeTokenLock.User userAfter = getUser(holder);
+    ISafeTokenLock.UnlockInfo unlockAfter = getUnlock(holder, index);
 
-    assert user1.unlockStart == user2.unlockStart;
-    assert maturesAtTimestamp == to_mathint(unlockInfo2.unlockedAt);
+    assert userAfter.unlockStart == userBefore.unlockStart
+        => unlockAfter.unlockedAt == unlockBefore.unlockedAt;
+    assert userAfter.unlockStart != userBefore.unlockStart
+        => unlockAfter.unlockedAt == 0;
 }
 
-// hook to update sum of locked tokens whenever user struct is updated
-hook Sstore SafeTokenLockHarness._users[KEY address user].locked uint96 value (uint96 old_value) STORAGE {
-    ghostLocked = ghostLocked + (value - old_value);
-    userLocks[user] = value;
-}
-
-// hook to update sum of unlocked tokens whenever user struct is updated
-hook Sstore SafeTokenLockHarness._users[KEY address key].unlocked uint96 value (uint96 old_value) STORAGE {
-    ghostUnlocked = ghostUnlocked + (value - old_value);
-    userUnlocks[key] = value;
-}
-
-// atleast 1 good case that user can withdraw all tokens using satisfy
+// Verify that it is always possible to, given an initial state with some
+// locked token amount, to fully withdraw the entire locked balance.
+// **Currently this is a "satisfy" rule which is very weak, and will change in
+// a future PR**.
 rule possibleToFullyWithdraw(address sender, uint96 amount) {
-    
     env eL; // env for lock
     env eU; // env for unlock
     env eW; // env for withdraw
