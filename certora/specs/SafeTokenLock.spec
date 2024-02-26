@@ -93,7 +93,9 @@ rule cannotWithdrawBeforeCooldown() {
 
 // Verify that it is impossible for a user to modify the time at which their
 // unlock matures and can be withdrawn.
-rule unlockTimeDoesNotChange(method f) {
+rule unlockTimeDoesNotChange(method f) filtered {
+    f -> !f.isView
+} {
     env e;
     calldataarg args;
 
