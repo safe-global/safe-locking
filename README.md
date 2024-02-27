@@ -1,4 +1,4 @@
-# Safe Locking Contract
+# Safe Token Locking Contract
 
 ## Introduction
 

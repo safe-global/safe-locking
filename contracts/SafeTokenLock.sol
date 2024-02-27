@@ -45,7 +45,7 @@ contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
 
     /**
      * @dev A mapping from an unlock `index` and its `holder` to the {UnlockInfo}.
-     *      The inner-most mapping is on the `holder` {address}, this ensures the storage associated with the `holder` in the context of ERC-4337 and allows this value to be read during user operation validation.
+     *      The inner-most mapping is on the `holder` {address}, ensuring that the storage is associated with the `holder` and allows the unlock information to be read during user operation validation in the context of ERC-4337.
      */
     mapping(uint32 index => mapping(address holder => UnlockInfo)) internal _unlocks;
 
