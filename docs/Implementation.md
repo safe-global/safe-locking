@@ -20,17 +20,17 @@ contract SafeTokenLock is ISafeTokenLock {
     uint32 unlockEnd; // Next unlock Id = unlockEnd++
   }
   struct UnlockInfo {
-    uint96 amount; // For 1 Billion Safe Tokens, this is enough. 10 ** 27 < 2 ** 96
-    uint64 unlockedAt; // Valid until Year: 2554.
+    uint96 amount; // For 1 Billion Safe tokens, this is enough. 10 ** 27 < 2 ** 96
+    uint64 maturesAt; // Valid for billions of years.
   }
 
-  address public immutable SAFE_TOKEN; // = Safe Token Address.
+  address public immutable SAFE_TOKEN; // = Safe token Address.
   uint64 public immutable COOLDOWN_PERIOD; // Contains the cooldown period.
   mapping(address => User) public users; // Contains the address => user info struct.
   mapping(uint32 => mapping(address => UnlockInfo)) public unlocks; // Contains the Unlock index => user => Unlock Info struct.
 
   constructor(address safeToken, uint32 cooldownPeriod) {
-    SAFE_TOKEN = safeTokenAddress; // Safe Token Contract Address
+    SAFE_TOKEN = safeTokenAddress; // Safe token contract address
     COOLDOWN_PERIOD = cooldownPeriod; // Cooldown period
   }
 
@@ -66,7 +66,7 @@ contract SafeTokenLock is ISafeTokenLock {
         2. Based on the passed maxUnlocks, decide on the `unlockEnd`.
         3. For i = `user[caller].unlockStart`, i < `unlockEnd`:
             3.1 Read `unlocks[i][caller]` to `UnlockInfo memory unlockInfo`.
-            3.2 Check if `unlockInfo.unlockedAt > block.timestamp`. If yes, break. Else continue:
+            3.2 Check if `unlockInfo.maturesAt > block.timestamp`. If yes, break. Else continue:
                 3.2.1 Add `unlockInfo.amount` to `amount`.
                 3.2.2 Emit the event.
                 3.2.3 Clear out unlocks[i][caller]
@@ -80,7 +80,7 @@ contract SafeTokenLock is ISafeTokenLock {
   }
 
   // @inheritdoc ISafeTokenLock
-  function userTokenBalance(address holder) external returns (uint96 amount) {
+  function getUserTokenBalance(address holder) external returns (uint96 amount) {
     /**
         Return the amount from `users[caller].locked` + `users[caller].unlocked`.
 
