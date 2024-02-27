@@ -9,12 +9,13 @@ pragma solidity 0.8.23;
  */
 interface ISafeTokenLock {
     /**
-     * @notice Contains the user locked and unlocked token information, along with unlock indexes.
-     * @param locked Contains the total locked token amount for the user.
-     * @param unlocked Contains the total unlocked token amount for the user.
-     * @param unlockStart The index of the next unlock for the user.
-     * @param unlockEnd The end index of the unlocks.
-     * @dev Note that `unlockEnd` does not correspond to an index of an active unlock but instead the index of the next unlock to be added.
+     * @notice Contains the user locked and unlocked token information, along with pending unlock indexes.
+     * @param locked The total locked token amount for the user.
+     * @param unlocked The total unlocked token amount for the user.
+     * @param unlockStart The index of the first pending unlock for the user.
+     * @param unlockEnd The end index of the pending unlocks.
+     * @dev Note that `unlockEnd` does not correspond to an index of a pending unlock but instead the index of the next unlock to be added.
+     *      Thus, `unlockStart == unlockEnd` implies that the user has no pending unlocks.
      */
     struct User {
         uint96 locked;
@@ -24,15 +25,15 @@ interface ISafeTokenLock {
     }
 
     /**
-     * @notice Contains the unlock amount and unlock time.
+     * @notice Contains information associated with a pending unlock.
      * @param amount The amount of tokens for the unlock.
-     * @param unlockedAt The timestamp the unlock will mature at, and become available for withdrawal.
+     * @param maturesAt The timestamp the unlock will mature at, and become available for withdrawal.
      * @dev For total supply of Safe tokens (1 billion), {uint96} is enough: `10 ** 27 < 2 ** 96`.
      *      {uint64} is valid for billions of years.
      */
     struct UnlockInfo {
         uint96 amount;
-        uint64 unlockedAt;
+        uint64 maturesAt;
     }
 
     /**
@@ -53,13 +54,13 @@ interface ISafeTokenLock {
     /**
      * @notice Emitted when tokens are withdrawn.
      * @param holder The address of the user who withdrew the tokens.
-     * @param index The index of the unlock operation which is withdrawn.
-     * @param amount The amount of tokens withdrawn.
+     * @param index The index of the unlock operation which was withdrawn.
+     * @param amount The amount of withdrawn tokens.
      */
     event Withdrawn(address indexed holder, uint32 indexed index, uint96 amount);
 
     /**
-     * @notice Error indicating an attempt to use zero tokens when locking or unlocking.
+     * @notice Error indicating an attempt to lock or unlock with an amount of 0.
      */
     error InvalidTokenAmount();
 
@@ -89,9 +90,7 @@ interface ISafeTokenLock {
     /**
      * @notice Locks the specified amount of tokens.
      * @param amount The amount of tokens to lock. The function will revert with {InvalidTokenAmount} in case `amount` is 0.
-     * @dev Safe Token Supply = 1 Billion with 18 decimals which is < 2 ** 96
-     * Does not allow locking zero tokens.
-     * Gas Usage (major): Token Transfer + SLOAD & SSTORE users[msg.sender] + Emit Event
+     * @dev Gas Usage (major): Token Transfer + SLOAD & SSTORE users[msg.sender] + Emit Event
      */
     function lock(uint96 amount) external;
 
@@ -100,17 +99,16 @@ interface ISafeTokenLock {
      * @param amount The amount of tokens to lock. The function will revert with custom error {InvalidTokenAmount} in case `amount` is 0.
      *               The function will revert with custom error {UnlockAmountExceeded} in case `amount` is greater than the locked amount.
      * @return index The index of the unlock operation.
-     * @dev Does not allow unlocking zero tokens.
      * Gas Usage (major): SLOAD & SSTORE users[msg.sender] + SSTORE UnlockInfo + Emit Event
      */
     function unlock(uint96 amount) external returns (uint32 index);
 
     /**
      * @notice Withdraws the unlocked tokens of `maxUnlocks` oldest operations initiated by the caller.
-     * @param maxUnlocks The number of unlock operations to be withdrawn.
+     * @param maxUnlocks The maximum number of unlock operations to be withdrawn, or 0 to process all unlocks.
+     *                   Will not revert if `maxUnlocks` is greater than the number of matured unlocks, and will only withdraw the matured unlocks.
      * @return amount The amount of tokens withdrawn.
-     * @dev Calling this function with zero `maxUnlocks` will result in withdrawing all matured unlock operations.
-     * Gas Usage (major usage only): SLOAD users[caller] + n SLOAD unlocks[i][caller] + n Event Emits
+     * @dev Gas Usage (major usage only): SLOAD users[caller] + n SLOAD unlocks[i][caller] + n Event Emits
      * + n Zero assignment SSTORE unlocks[i][caller] + SSTORE users[caller] + Token Transfer
      * where n can be as high as max(`unlockEnd - unlockStart`, `maxUnlocks`).
      */
@@ -121,7 +119,7 @@ interface ISafeTokenLock {
      * @param holder The address of the holder.
      * @return amount The amount of (locked + to be unlocked + withdrawable) Safe tokens of the holder.
      */
-    function userTokenBalance(address holder) external returns (uint96 amount);
+    function getUserTokenBalance(address holder) external view returns (uint96 amount);
 
     /**
      * @notice Returns user information for the specified address.
