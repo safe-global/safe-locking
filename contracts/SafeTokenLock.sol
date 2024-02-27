@@ -14,12 +14,12 @@ import {ISafeTokenLock} from "./interfaces/ISafeTokenLock.sol";
  */
 contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
     /**
-     * @notice Error indicating an attempt to use the 0 {address} as Safe token address.
+     * @notice Error indicating an attempt to use the zero {address} as Safe token address.
      */
     error InvalidSafeTokenAddress();
 
     /**
-     * @notice Error indicating an attempt to use 0 as cooldown period value.
+     * @notice Error indicating an attempt to use zero as cooldown period value.
      */
     error InvalidCooldownPeriod();
 
@@ -52,8 +52,8 @@ contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
     /**
      * @notice Creates a new instance of the Safe token locking contract.
      * @param initialOwner Initial owner of the contract.
-     * @param safeToken Address of the Safe token. Passing the 0 {address} will revert with {InvalidSafeTokenAddress}.
-     * @param cooldownPeriod The minimum period in seconds after which Safe token withdrawal can be performed. Passing 0 will revert with {InvalidTokenAmount}.
+     * @param safeToken Address of the Safe token. Passing the zero {address} will revert with {InvalidSafeTokenAddress}.
+     * @param cooldownPeriod The minimum period in seconds after which Safe token withdrawal can be performed. Passing zero will revert with {InvalidTokenAmount}.
      */
     constructor(address initialOwner, address safeToken, uint32 cooldownPeriod) Ownable(initialOwner) {
         if (safeToken == address(0)) revert InvalidSafeTokenAddress();

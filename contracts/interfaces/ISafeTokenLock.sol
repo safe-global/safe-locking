@@ -60,7 +60,7 @@ interface ISafeTokenLock {
     event Withdrawn(address indexed holder, uint32 indexed index, uint96 amount);
 
     /**
-     * @notice Error indicating an attempt to lock or unlock with an amount of 0.
+     * @notice Error indicating an attempt to lock or unlock with an amount of zero.
      */
     error InvalidTokenAmount();
 
@@ -89,14 +89,14 @@ interface ISafeTokenLock {
 
     /**
      * @notice Locks the specified amount of tokens.
-     * @param amount The amount of tokens to lock. The function will revert with {InvalidTokenAmount} in case `amount` is 0.
+     * @param amount The amount of tokens to lock. The function will revert with {InvalidTokenAmount} in case `amount` is zero.
      * @dev Gas Usage (major): Token Transfer + SLOAD & SSTORE users[msg.sender] + Emit Event
      */
     function lock(uint96 amount) external;
 
     /**
      * @notice Unlocks the specified amount of tokens.
-     * @param amount The amount of tokens to lock. The function will revert with custom error {InvalidTokenAmount} in case `amount` is 0.
+     * @param amount The amount of tokens to lock. The function will revert with custom error {InvalidTokenAmount} in case `amount` is zero.
      *               The function will revert with custom error {UnlockAmountExceeded} in case `amount` is greater than the locked amount.
      * @return index The index of the unlock operation.
      * @dev Gas Usage (major): SLOAD & SSTORE users[msg.sender] + SSTORE UnlockInfo + Emit Event
@@ -105,7 +105,7 @@ interface ISafeTokenLock {
 
     /**
      * @notice Withdraws the unlocked tokens of `maxUnlocks` oldest operations initiated by the caller.
-     * @param maxUnlocks The maximum number of unlock operations to be withdrawn, or 0 to process all unlocks.
+     * @param maxUnlocks The maximum number of unlock operations to be withdrawn, or zero to process all unlocks.
      *                   Will not revert if `maxUnlocks` is greater than the number of matured unlocks, and will only withdraw the matured unlocks.
      * @return amount The amount of tokens withdrawn.
      * @dev Gas Usage (major usage only): SLOAD users[caller] + n SLOAD unlocks[i][caller] + n Event Emits
