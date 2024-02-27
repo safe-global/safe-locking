@@ -22,9 +22,20 @@ contract UnlockN {
     }
 
     function unlock(uint256 n) external {
-        unchecked {
-            for (; n > 0; n--) {
-                ISafeTokenLock(SAFE_TOKEN_LOCK).unlock(1);
+        ISafeTokenLock safeTokenLock = ISafeTokenLock(SAFE_TOKEN_LOCK);
+        bytes4 unlockSelector = safeTokenLock.unlock.selector;
+
+        // Highly optimized call loop to squeeze out every last unlock possible.
+        // solhint-disable-next-line no-inline-assembly
+        assembly ("memory-safe") {
+            mstore(0, unlockSelector)
+            mstore(4, 1)
+            for {
+
+            } gt(n, 0) {
+                n := sub(n, 1)
+            } {
+                pop(call(gas(), safeTokenLock, 0, 0, 0x24, 0, 0))
             }
         }
     }
