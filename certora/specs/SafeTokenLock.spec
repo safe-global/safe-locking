@@ -9,7 +9,7 @@ methods {
     function withdraw(uint32) external returns (uint96);
     function getUser(address holder) external returns(ISafeTokenLock.User memory) envfree;
     function getUnlock(address holder, uint32 index) external returns(ISafeTokenLock.UnlockInfo memory) envfree;
-    function userTokenBalance(address holder) external returns (uint96) envfree;
+    function getUserTokenBalance(address holder) external returns (uint96) envfree;
 
     // Harnessed functions
     function getStartAndEnd(address userAddress) external returns(uint32, uint32) envfree;
@@ -51,16 +51,16 @@ hook Sstore SafeTokenLockHarness._users[KEY address key].unlocked uint96 value (
     ghostUserUnlocks[key] = value;
 }
 
-// Verify that Safe Token Contract's Safe Token balance is always zero.
+// Verify that Safe token contract's Safe token balance is always zero.
 invariant safeTokenSelfBalanceIsZero()
     safeTokenContract.balanceOf(safeTokenContract) == 0;
 
-// Verify that Safe Token Contract cannot lock tokens.
-// While this invariant is not important for the Safe locking contract per se,
-// having the Safe token contract lock or hold balance could cause strange behaviours
-// and cuase other rules and invariants to not hold.
+// Verify that Safe token contract cannot lock tokens. While this invariant is
+// not important for the Safe locking contract per se, having the Safe token
+// contract lock or hold balance could cause strange behaviours and cause other
+// rules and invariants to not hold.
 invariant safeTokenCannotLock()
-    userTokenBalance(safeTokenContract) == 0
+    getUserTokenBalance(safeTokenContract) == 0
     {
         preserved {
             requireInvariant safeTokenSelfBalanceIsZero();
@@ -76,11 +76,11 @@ rule doesNotAffectOtherUserBalance(method f, address holder) filtered {
     calldataarg args;
 
     require (e.msg.sender != holder);
-    uint96 balanceBefore = userTokenBalance(e, holder);
+    uint96 balanceBefore = getUserTokenBalance(e, holder);
 
     f(e,args);
 
-    assert userTokenBalance(e, holder) == balanceBefore;
+    assert getUserTokenBalance(e, holder) == balanceBefore;
 }
 
 // Verify that withdrawal cannot increase the balance of a user more than their
@@ -102,11 +102,11 @@ rule cannotWithdrawMoreThanUnlocked() {
 rule cannotWithdrawBeforeCooldown() {
     env e;
 
-    ISafeTokenLock.UnlockInfo unlock = getUnlock(e.msg.sender, getUser(e.msg.sender).unlockStart);
+    ISafeTokenLock.UnlockInfo unlockInfo = getUnlock(e.msg.sender, getUser(e.msg.sender).unlockStart);
 
     uint96 amountWithdrawn = withdraw(e, _);
 
-    assert to_mathint(e.block.timestamp) < to_mathint(unlock.unlockedAt)
+    assert to_mathint(e.block.timestamp) < to_mathint(unlockInfo.maturesAt)
         => amountWithdrawn == 0;
 }
 
@@ -120,21 +120,21 @@ rule unlockTimeDoesNotChange(method f, address holder) filtered {
 
     ISafeTokenLock.User userBefore = getUser(holder);
     uint32 index = userBefore.unlockStart;
-    ISafeTokenLock.UnlockInfo unlockBefore = getUnlock(holder, index);
+    ISafeTokenLock.UnlockInfo unlockInfoBefore = getUnlock(holder, index);
 
     require userBefore.unlockStart < userBefore.unlockEnd;
     // TODO: This `require` should be `requireInvariant` once it gets added.
-    require unlockBefore.amount > 0;
+    require unlockInfoBefore.amount > 0;
 
     f(e, args);
 
     ISafeTokenLock.User userAfter = getUser(holder);
-    ISafeTokenLock.UnlockInfo unlockAfter = getUnlock(holder, index);
+    ISafeTokenLock.UnlockInfo unlockInfoAfter = getUnlock(holder, index);
 
     assert userAfter.unlockStart == userBefore.unlockStart
-        => unlockAfter.unlockedAt == unlockBefore.unlockedAt;
+        => unlockInfoAfter.maturesAt == unlockInfoBefore.maturesAt;
     assert userAfter.unlockStart != userBefore.unlockStart
-        => unlockAfter.unlockedAt == 0;
+        => unlockInfoAfter.maturesAt == 0;
 }
 
 // Verify that it is impossible to unlock more tokens once `unlockEnd` has

@@ -14,7 +14,7 @@ import {ISafeTokenLock} from "./interfaces/ISafeTokenLock.sol";
  */
 contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
     /**
-     * @notice Error indicating an attempt to use the zero address as Safe Token address.
+     * @notice Error indicating an attempt to use the zero {address} as Safe token address.
      */
     error InvalidSafeTokenAddress();
 
@@ -24,9 +24,9 @@ contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
     error InvalidCooldownPeriod();
 
     /**
-     * @notice An error that indicates an attempt to transfer Safe tokens out of the contract using recovery mechanism.
+     * @notice Error indicating an attempt to transfer Safe tokens out of the contract using the rescue mechanism.
      */
-    error CannotRecoverSafeToken();
+    error CannotRescueSafeToken();
 
     /**
      * @inheritdoc ISafeTokenLock
@@ -38,13 +38,21 @@ contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
      */
     uint64 public immutable COOLDOWN_PERIOD;
 
-    mapping(address => User) internal _users; // Contains the address => user info struct.
-    mapping(uint32 => mapping(address => UnlockInfo)) internal _unlocks; // Contains the Unlock id => user => Unlock Info struct.
+    /**
+     * @dev A mapping from a `holder` to its {User} data.
+     */
+    mapping(address holder => User) internal _users;
 
     /**
-     * @notice Sets the immutables of the contract and the initial owner.
+     * @dev A mapping from an unlock `index` and its `holder` to the {UnlockInfo}.
+     *      The inner-most mapping is on the `holder` {address}, ensuring that the storage is associated with the `holder` and allows the unlock information to be read during user operation validation in the context of ERC-4337.
+     */
+    mapping(uint32 index => mapping(address holder => UnlockInfo)) internal _unlocks;
+
+    /**
+     * @notice Creates a new instance of the Safe token locking contract.
      * @param initialOwner Initial owner of the contract.
-     * @param safeToken Address of the Safe token. Passing address(0) will revert with {InvalidSafeTokenAddress}.
+     * @param safeToken Address of the Safe token. Passing the zero {address} will revert with {InvalidSafeTokenAddress}.
      * @param cooldownPeriod The minimum period in seconds after which Safe token withdrawal can be performed. Passing zero will revert with {InvalidTokenAmount}.
      */
     constructor(address initialOwner, address safeToken, uint32 cooldownPeriod) Ownable(initialOwner) {
@@ -98,7 +106,7 @@ contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
 
         for (; index < unlockEnd; index++) {
             UnlockInfo memory unlockInfo = _unlocks[index][msg.sender];
-            if (unlockInfo.unlockedAt > block.timestamp) break;
+            if (unlockInfo.maturesAt > block.timestamp) break;
 
             amount += unlockInfo.amount;
             emit Withdrawn(msg.sender, index, unlockInfo.amount);
@@ -114,7 +122,7 @@ contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
     /**
      * @inheritdoc ISafeTokenLock
      */
-    function userTokenBalance(address holder) external view returns (uint96 amount) {
+    function getUserTokenBalance(address holder) external view returns (uint96 amount) {
         return _users[holder].locked + _users[holder].unlocked;
     }
 
@@ -136,7 +144,7 @@ contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
      * @inheritdoc TokenRescuer
      */
     function _beforeTokenRescue(address token, address beneficiary, uint256 amount) internal override {
-        if (token == SAFE_TOKEN) revert CannotRecoverSafeToken();
+        if (token == SAFE_TOKEN) revert CannotRescueSafeToken();
         TokenRescuer._beforeTokenRescue(token, beneficiary, amount);
     }
 }
