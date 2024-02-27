@@ -337,7 +337,7 @@ describe('SafeTokenLock', function () {
       await expect(safeTokenLock.connect(alice).unlock(tokenToUnlock)).to.emit(safeTokenLock, 'Unlocked').withArgs(alice, 0, tokenToUnlock)
     })
 
-    it('Unlock Index can be same for two different user with two different locked and unlocked amount', async function () {
+    it('Should allow the same unlock index for two different users with two different locked and unlocked amount', async function () {
       const { safeToken, safeTokenLock, tokenCollector, alice, bob } = await setupTests()
       const tokenToLockAlice = ethers.parseUnits('100', 18)
       const tokenToUnlockAlice = ethers.parseUnits('50', 18)
@@ -373,6 +373,28 @@ describe('SafeTokenLock', function () {
       expect((await safeTokenLock.getUnlock(bob, index)).unlockedAt).to.equal(expectedUnlockedAtBob)
       expect(await safeTokenLock.userTokenBalance(alice)).to.equal(tokenToLockAlice)
       expect(await safeTokenLock.userTokenBalance(bob)).to.equal(tokenToLockBob)
+    })
+
+    it('Should allow multiple unlocks per transaction', async function () {
+      // Note that we intentionally skip this test as it takes a very long time to run, and it is not particularly
+      // interesting to check all the time but mostly to give an indication on how much total gas would be needed to hit
+      // the `type(uint32).max` limit on unlocks for a single holder.
+      this.skip()
+
+      const { safeToken, safeTokenLock, tokenCollector } = await setupTests()
+
+      const UnlockN = await ethers.getContractFactory('UnlockN')
+      const unlockN = await UnlockN.deploy(safeTokenLock)
+
+      // Transfer tokens to UnlockN contract
+      await transferToken(safeToken, tokenCollector, unlockN, ethers.parseUnits('1', 18))
+
+      // Locking tokens of UnlockN contract
+      await unlockN.lockAll()
+
+      // Multiple unlocks in a single transaction do not revert, up to a maximum of 1154 from the block gas limit.
+      await expect(unlockN.unlock(1154, { gasLimit: 30e6 })).to.not.be.rejected
+      await expect(unlockN.unlock(1155, { gasLimit: 30e6 })).to.be.rejected
     })
   })
 
