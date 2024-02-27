@@ -78,8 +78,8 @@ hook Sstore _users[KEY address holder].unlockEnd uint32 value STORAGE {
 ghost mapping(address => mapping(mathint => mathint)) ghostUnlockAmount {
     init_state axiom
         forall address holder.
-        forall mathint i.
-            ghostUnlockAmount[holder][i] == 0;
+        forall mathint index.
+            ghostUnlockAmount[holder][index] == 0;
 }
 hook Sload uint96 value _unlocks[KEY uint32 index][KEY address holder].amount STORAGE {
     require ghostUnlockAmount[holder][to_mathint(index)] == to_mathint(value);
@@ -201,7 +201,7 @@ invariant userTokenBalanceIsLessThanTotalSupply(address holder)
     }
 }
 
-// Invariant that the `unlockStart` index is always before the `unlockEn` index
+// Invariant that the `unlockStart` index is always before the `unlockEnd` index
 // for a user. This invariant is useful for rules where the well-formed-ness
 // of the unlock indexes are important.
 invariant unlockStartBeforeEnd(address holder)
@@ -265,7 +265,7 @@ rule canAlwaysUnlock(uint96 amount) {
     // Exception 1: if the user has already done `type(uint256).max` previous
     // unlocks. This causes the new `unlockEnd` to overflow and therefore the
     // `unlock` call to always revert.
-    require userBefore.unlockEnd + 1 <= MAX_UINT(32); // exception 1
+    require userBefore.unlockEnd + 1 <= MAX_UINT(32);
 
     // Exception 2: the timestamp is far enough in the future such that, when
     // added to the cooldown period, it would overflow a `uint64`. This is
