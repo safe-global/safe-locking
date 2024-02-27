@@ -98,11 +98,11 @@ invariant safeTokenSelfBalanceIsZero()
 // rules and invariants to not hold.
 invariant safeTokenCannotLock()
     getUserTokenBalance(safeTokenContract) == 0
-    {
-        preserved {
-            requireInvariant safeTokenSelfBalanceIsZero();
-        }
+{
+    preserved {
+        requireInvariant safeTokenSelfBalanceIsZero();
     }
+}
 
 // A setup function that requires Safe token invariants that were proven in the
 // Safe token spec. Because of Certora tool limitations, the invariants cannot
@@ -147,7 +147,7 @@ invariant noAllowanceForSafeTokenLock(address spender)
 // contract; i.e. the sum of all users's `locked` and `unlocked` amounts. This
 // is important to guarantee that there is always enough Safe token balance to
 // withdraw matured unlocks.
-invariant contractTokenBalanceIsGreaterThanTotalLockedAndUnlockedAmounts()
+invariant contractBalanceIsGreaterThanTotalLockedAndUnlockedAmounts()
     to_mathint(safeTokenContract.balanceOf(currentContract)) >= ghostTotalLocked + ghostTotalUnlocked
 {
     preserved with (env e) {
@@ -160,14 +160,45 @@ invariant contractTokenBalanceIsGreaterThanTotalLockedAndUnlockedAmounts()
     }
 }
 
-// Setup functions to ensure the ghost variable constraints are considered when
+// Invariants to ensure the ghost variable constraints are considered when
 // proving invariants and rules. This is because for the ghost variable binding
 // to work, the `SLOAD` hook needs to trigger, but it doesn't always happen
 // for a given rule or invariant. This function ensures that ghost variable
 // constraints are always included.
-function setupRequireGhostVariableConstraints(address holder) {
-    require ghostUserUnlocked[holder] <= ghostTotalUnlocked;
-    require ghostUserLocked[holder] <= ghostTotalLocked;
+//
+// Unfortunately, proving this fully with the Certora tool is not really
+// possible in the absence of a "sum of" keyword (that may be added in the
+// future), as proving it holds for a single address requires proving it for two
+// addresses, which requires proving it for 3 addresses, etc.
+invariant totalLockedIsGreaterThanUserLocked(address holder)
+    ghostTotalLocked >= ghostUserLocked[holder]
+{
+    preserved unlock(uint96 amount) with (env e) {
+        require holder != e.msg.sender
+            => ghostTotalLocked >= ghostUserLocked[holder] + ghostUserLocked[e.msg.sender];
+    }
+}
+invariant totalUnlockedIsGreaterThanUserUnlocked(address holder)
+    ghostTotalUnlocked >= ghostUserUnlocked[holder]
+{
+    preserved withdraw(uint32 index) with (env e) {
+        require holder != e.msg.sender
+            => ghostTotalUnlocked >= ghostUserUnlocked[holder] + ghostUserUnlocked[e.msg.sender];
+    }
+}
+
+// Invariant that a user's Safe token balance in the locking contract is less
+// that the total supply of Safe token.
+invariant userTokenBalanceIsLessThanTotalSupply(address holder)
+    to_mathint(getUserTokenBalance(holder)) <= to_mathint(safeTokenContract.totalSupply())
+{
+    preserved with (env e) {
+        setupRequireSafeTokenInvariants(currentContract, holder);
+        requireInvariant contractBalanceIsGreaterThanTotalLockedAndUnlockedAmounts();
+        requireInvariant totalLockedIsGreaterThanUserLocked(holder);
+        requireInvariant totalUnlockedIsGreaterThanUserUnlocked(holder);
+        require e.msg.sender != currentContract;
+    }
 }
 
 // Invariant that the `unlockStart` index is always before the `unlockEn` index
@@ -225,9 +256,9 @@ rule canAlwaysUnlock(uint96 amount) {
     env e;
 
     setupRequireSafeTokenInvariants(currentContract, e.msg.sender);
-    setupRequireGhostVariableConstraints(e.msg.sender);
+    requireInvariant userTokenBalanceIsLessThanTotalSupply(e.msg.sender);
     requireInvariant userUnlockedIsSumOfUnlockAmounts(e.msg.sender);
-    requireInvariant contractTokenBalanceIsGreaterThanTotalLockedAndUnlockedAmounts();
+    requireInvariant contractBalanceIsGreaterThanTotalLockedAndUnlockedAmounts();
 
     ISafeTokenLock.User userBefore = getUser(e.msg.sender);
 
@@ -277,9 +308,9 @@ rule unlockMaturityTimestampDoesNotChange(method f, address holder) filtered {
     ISafeTokenLock.UnlockInfo unlockAfter = getUnlock(holder, index);
 
     assert userAfter.unlockStart == userBefore.unlockStart
-        => unlockAfter.unlockedAt == unlockBefore.unlockedAt;
+        => unlockAfter.maturesAt == unlockBefore.maturesAt;
     assert userAfter.unlockStart != userBefore.unlockStart
-        => unlockAfter.unlockedAt == 0;
+        => unlockAfter.maturesAt == 0;
 }
 
 // Verify that withdrawal cannot increase the balance of a user more than their
