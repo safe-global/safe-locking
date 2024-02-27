@@ -24,19 +24,18 @@ invariant totalSupplyIsConstant()
 
 // Invariant that proves that the sum of token balances is equal to the total
 // supply. This invariant is important to show that transfers in the locking
-// contract can never overflow a Safe token holder's balance.
+// contract can never overflow a Safe token holder's balance. In particular this
+// also implies that:
+//
+// ```
+// forall address a. balanceOf(a) <= totalSupply()
+// forall address a. forall address b. a != b
+//    => balanceOf(a) + balanceOf(b) <= totalSupply()
+// ```
+//
+// Unfortunately, proving this with the Certora tool is not really possible in
+// the absence of a "sum of" keyword (that may be added in the future), as
+// proving it for two addresses requires proving it for three addresses, which
+// requires proving it for 4 addresses, etc.
 invariant totalSupplyEqualsTotalBalance()
     to_mathint(totalSupply()) == ghostTotalBalance;
-
-// Invariant that proves that the sum of any two user's token balances cannot
-// exceed the total supply. This is similar to the above invariant and helps
-// document the exact conditions that are required for overflows to be
-// impossible when transferring Safe tokens from the locking contract.
-invariant userBalancesCannotExceedTotalSupply(address a, address b)
-    (a != b && balanceOf(a) + balanceOf(b) <= to_mathint(totalSupply()))
-        || (a == b && balanceOf(a) <= totalSupply())
-{
-    preserved {
-        requireInvariant totalSupplyEqualsTotalBalance;
-    }
-}

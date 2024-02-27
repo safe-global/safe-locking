@@ -16,6 +16,7 @@ methods {
 
     // SafeToken functions
     function safeTokenContract.balanceOf(address) external returns(uint256) envfree;
+    function safeTokenContract.totalSupply() external returns(uint256) envfree;
 
     // Prevent SafeTokenHarness.transfer to cause HAVOC
     function _.transfer(address,uint256) external => NONDET UNRESOLVED;
@@ -73,12 +74,10 @@ invariant safeTokenCannotLock()
 // synthesize equivalent `require`-ments to the proven invariants.
 function setupRequireSafeTokenInvariants(address a, address b) {
     require safeTokenContract.totalSupply() == 10^27;
-    if (a != b) {
-        require safeTokenContract.balanceOf(a) + safeTokenContract.balanceOf(b)
+    require safeTokenContract.balanceOf(a) <= safeTokenContract.totalSupply();
+    require a != b
+        => safeTokenContract.balanceOf(a) + safeTokenContract.balanceOf(b)
             <= to_mathint(safeTokenContract.totalSupply());
-    } else {
-        require safeTokenContract.balanceOf(a) <= safeTokenContract.totalSupply();
-    }
 }
 
 // Verify that no operations on the Safe token locking contract done by user A
