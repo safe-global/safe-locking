@@ -67,6 +67,20 @@ invariant safeTokenCannotLock()
         }
     }
 
+// A setup function that requires Safe token invariants that were proven in the
+// Safe token spec. Because of Certora tool limitations, the invariants cannot
+// be included in this file and used with `requireInvariant`, so instead we
+// synthesize equivalent `require`-ments to the proven invariants.
+function setupRequireSafeTokenInvariants(address a, address b) {
+    require safeTokenContract.totalSupply() == 10^27;
+    if (a != b) {
+        require safeTokenContract.balanceOf(a) + safeTokenContract.balanceOf(b)
+            <= to_mathint(safeTokenContract.totalSupply());
+    } else {
+        require safeTokenContract.balanceOf(a) <= safeTokenContract.totalSupply();
+    }
+}
+
 // Verify that no operations on the Safe token locking contract done by user A
 // can affect the Safe token balance of user B in the locking contract.
 rule doesNotAffectOtherUserBalance(method f, address holder) filtered {
