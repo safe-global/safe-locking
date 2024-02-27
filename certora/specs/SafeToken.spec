@@ -1,3 +1,5 @@
+definition ONE_BILLION_TOKENS() returns mathint = 10^27;
+
 methods {
     // SafeToken functions
     function balanceOf(address account) external returns (uint256) envfree;
@@ -20,7 +22,7 @@ hook Sstore _balances[KEY address account] uint256 value (uint256 oldValue) STOR
 // 1 billion tokens. This invariant is important to ensure that locking contract
 // amounts cannot overflow a `uint96`.
 invariant totalSupplyIsConstant()
-    to_mathint(currentContract.totalSupply()) == 10^27;
+    to_mathint(totalSupply()) == ONE_BILLION_TOKENS();
 
 // Invariant that proves that the sum of token balances is equal to the total
 // supply. This invariant is important to show that transfers in the locking
