@@ -1,5 +1,7 @@
 using SafeTokenHarness as safeTokenContract;
 
+definition MAX_UINT32() returns mathint = 2^32 - 1;
+
 methods {
     // SafeTokenLock functions
     function lock(uint96) external returns(uint32);
@@ -133,6 +135,25 @@ rule unlockTimeDoesNotChange(method f, address holder) filtered {
         => unlockAfter.unlockedAt == unlockBefore.unlockedAt;
     assert userAfter.unlockStart != userBefore.unlockStart
         => unlockAfter.unlockedAt == 0;
+}
+
+// Verify that it is impossible to unlock more tokens once `unlockEnd` has
+// reached the maximum value that can be represented by a `uint32`. This rule is
+// meant to document this particular limitation in the locking contract.
+rule cannotUnlockPastMaxUint32(method f, address holder) filtered {
+    f -> !f.isView
+} {
+    env e;
+    calldataarg args;
+
+    ISafeTokenLock.User userBefore = getUser(holder);
+    require to_mathint(userBefore.unlockEnd) == MAX_UINT32();
+
+    f(e, args);
+
+    ISafeTokenLock.User userAfter = getUser(holder);
+    assert userAfter.locked >= userBefore.locked;
+    assert userAfter.unlocked <= userBefore.unlocked;
 }
 
 // Verify that it is always possible to, given an initial state with some

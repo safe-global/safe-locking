@@ -75,9 +75,15 @@ contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
         User memory user = _users[msg.sender];
         if (user.locked < amount) revert UnlockAmountExceeded();
 
-        _unlocks[user.unlockEnd][msg.sender] = UnlockInfo(amount, uint64(block.timestamp) + COOLDOWN_PERIOD);
-        _users[msg.sender] = User(user.locked - amount, user.unlocked + amount, user.unlockStart, user.unlockEnd + 1);
+        // Note that it is possible here for `index + 1` to overflow and revert in the case where
+        // `user.unlockEnd == type(uint32).max`. This means that after roughly 4 billion unlocks,
+        // it is possible for funds to remain stuck in the locking contract. The amount of gas
+        // required to perform 4 billion unlocks is prohibitively high, and we do not believe that
+        // a user will hit this limit under regular use.
+
         index = user.unlockEnd;
+        _unlocks[index][msg.sender] = UnlockInfo(amount, uint64(block.timestamp) + COOLDOWN_PERIOD);
+        _users[msg.sender] = User(user.locked - amount, user.unlocked + amount, user.unlockStart, index + 1);
 
         emit Unlocked(msg.sender, index, amount);
     }
