@@ -99,7 +99,7 @@ interface ISafeTokenLock {
      * @param amount The amount of tokens to lock. The function will revert with custom error {InvalidTokenAmount} in case `amount` is 0.
      *               The function will revert with custom error {UnlockAmountExceeded} in case `amount` is greater than the locked amount.
      * @return index The index of the unlock operation.
-     * Gas Usage (major): SLOAD & SSTORE users[msg.sender] + SSTORE UnlockInfo + Emit Event
+     * @dev Gas Usage (major): SLOAD & SSTORE users[msg.sender] + SSTORE UnlockInfo + Emit Event
      */
     function unlock(uint96 amount) external returns (uint32 index);
 
