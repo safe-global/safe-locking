@@ -297,7 +297,7 @@ rule unlockMaturityTimestampDoesNotChange(method f, address holder) filtered {
 
     ISafeTokenLock.User userBefore = getUser(holder);
     uint32 index = userBefore.unlockStart;
-    ISafeTokenLock.UnlockInfo unlockBefore = getUnlock(holder, index);
+    ISafeTokenLock.UnlockInfo unlockInfoBefore = getUnlock(holder, index);
 
     require userBefore.unlockStart < userBefore.unlockEnd;
     requireInvariant unlockAmountsAreNonZero(holder);
@@ -305,12 +305,12 @@ rule unlockMaturityTimestampDoesNotChange(method f, address holder) filtered {
     f(e, args);
 
     ISafeTokenLock.User userAfter = getUser(holder);
-    ISafeTokenLock.UnlockInfo unlockAfter = getUnlock(holder, index);
+    ISafeTokenLock.UnlockInfo unlockInfoAfter = getUnlock(holder, index);
 
     assert userAfter.unlockStart == userBefore.unlockStart
-        => unlockAfter.maturesAt == unlockBefore.maturesAt;
+        => unlockInfoAfter.maturesAt == unlockInfoBefore.maturesAt;
     assert userAfter.unlockStart != userBefore.unlockStart
-        => unlockAfter.maturesAt == 0;
+        => unlockInfoAfter.maturesAt == 0;
 }
 
 // Verify that withdrawal cannot increase the balance of a user more than their
