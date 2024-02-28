@@ -88,6 +88,28 @@ hook Sstore _unlocks[KEY uint32 index][KEY address holder].amount uint96 value S
     ghostUnlockAmount[holder][to_mathint(index)] = to_mathint(value);
 }
 
+ghost mathint lastTimestamp;
+
+hook TIMESTAMP uint256 time {
+    require to_mathint(time) < MAX_UINT(64) - COOLDOWN_PERIOD();
+    require to_mathint(time) >= lastTimestamp;
+    lastTimestamp = time;
+}
+
+// Ghost variables that track the individual unlock mature timestamp.
+ghost mapping(address => mapping(mathint => mathint)) ghostUnlockMaturesAt {
+    init_state axiom
+        forall address holder.
+        forall mathint index.
+            ghostUnlockMaturesAt[holder][index] == 0;
+}
+hook Sload uint64 value _unlocks[KEY uint32 index][KEY address holder].maturesAt STORAGE {
+    require ghostUnlockMaturesAt[holder][to_mathint(index)] == to_mathint(value);
+}
+hook Sstore _unlocks[KEY uint32 index][KEY address holder].maturesAt uint64 value STORAGE {
+    ghostUnlockMaturesAt[holder][to_mathint(index)] = to_mathint(value);
+}
+
 // Verify that Safe token contract's Safe token balance is always zero.
 invariant safeTokenSelfBalanceIsZero()
     safeTokenContract.balanceOf(safeTokenContract) == 0;
@@ -233,6 +255,14 @@ invariant unlockAmountsAreNonZero(address holder)
     forall uint32 index.
         ghostUserUnlockStart[holder] <= to_mathint(index) && to_mathint(index) < ghostUserUnlockEnd[holder]
             => ghostUnlockAmount[holder][index] > 0;
+
+invariant timestampsIncreaseWithinCooldownPeriod(address user)
+    (forall mathint i. ghostUserUnlockStart[user] <= i && i < ghostUserUnlockEnd[user] => ghostUnlockMaturesAt[user][i] <= lastTimestamp + COOLDOWN_PERIOD()) &&
+    (forall mathint i. forall mathint j. i <= j && ghostUserUnlockStart[user] <= i && j < ghostUserUnlockEnd[user] => ghostUnlockMaturesAt[user][i] <= ghostUnlockMaturesAt[user][j]) {
+        preserved {
+            requireInvariant unlockStartBeforeEnd(user);
+        }
+    }
 
 // Verify that no operations on the Safe token locking contract done by user A
 // can affect the Safe token balance of user B in the locking contract.
