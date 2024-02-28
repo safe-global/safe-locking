@@ -360,19 +360,12 @@ rule cannotUnlockPastMaxUint32(method f, address holder) filtered {
 }
 
 // Verify that withdrawing is commutative. That is, withdrawing with
-// `maxUnlocks` of `n` then `m`, is equivalent to `m` then `n`. An exception to
-// this rule is if the the user's `unlockEnd + maxUnlock` could overflow, but
-// reaching these high values of `unlockEnd` is not feasible.
-// this rule are noted below.
+// `maxUnlocks` of `n` then `m`, is equivalent to `m` then `n`.
 rule withdrawIsCommutative(uint32 maxUnlocks1, uint32 maxUnlocks2) {
     env e;
 
     requireInvariant unlockAmountsAreNonZero(e.msg.sender);
     requireInvariant contractCannotOperateOnItself();
-
-    // Exception: `unlockEnd + maxUnlocks` cannot overflow. Otherwise, there is
-    // an exception to commutativity with `maxUnlocks2 == 0`.
-    require getUser(e.msg.sender).unlockEnd + maxUnlocks1 <= MAX_UINT(32);
 
     storage init = lastStorage;
 
