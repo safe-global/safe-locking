@@ -266,9 +266,13 @@ invariant addressZeroCannotLock()
 // Invariant to prove that the timestamp of the unlock maturity is always
 // increasing. This invariant also proves that newer unlock maturity is always
 // greater than older unlocks.
-invariant timestampsIncreaseWithinCooldownPeriod(address user)
-    (forall mathint i. ghostUserUnlockStart[user] <= i && i < ghostUserUnlockEnd[user] => ghostUnlockMaturesAt[user][i] <= lastTimestamp + COOLDOWN_PERIOD()) &&
-    (forall mathint i. forall mathint j. i <= j && ghostUserUnlockStart[user] <= i && j < ghostUserUnlockEnd[user] => ghostUnlockMaturesAt[user][i] <= ghostUnlockMaturesAt[user][j]) {
+invariant unlocksAreOrderedByMaturityTimestamp(address user)
+    (forall mathint i.
+        ghostUserUnlockStart[user] <= i && i < ghostUserUnlockEnd[user] =>
+        ghostUnlockMaturesAt[user][i] <= lastTimestamp + COOLDOWN_PERIOD()) &&
+    (forall mathint i. forall mathint j.
+        i <= j && ghostUserUnlockStart[user] <= i && j < ghostUserUnlockEnd[user] =>
+        ghostUnlockMaturesAt[user][i] <= ghostUnlockMaturesAt[user][j]) {
         preserved {
             requireInvariant unlockStartBeforeEnd(user);
         }
