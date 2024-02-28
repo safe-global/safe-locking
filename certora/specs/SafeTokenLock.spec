@@ -4,7 +4,6 @@ definition MAX_UINT(mathint bitwidth) returns mathint = 2^bitwidth - 1;
 
 methods {
     // SafeTokenLock functions
-    function SAFE_TOKEN() external returns (address) envfree;
     function COOLDOWN_PERIOD() external returns (uint64) envfree;
     function getUnlock(address, uint32) external returns(ISafeTokenLock.UnlockInfo) envfree;
     function getUser(address) external returns(ISafeTokenLock.User) envfree;
@@ -240,11 +239,6 @@ invariant unlockAmountsAreNonZero(address holder)
 // address cannot lock tokens in the locking contract.
 invariant addressZeroCannotLock()
     getUserTokenBalance(0) == 0;
-
-// Invariant that proves that the Safe token locking contract's Safe token is
-// always the address of Safe token.
-invariant constructorSafeTokenState()
-    SAFE_TOKEN() == safeTokenContract;
 
 // Verify that no operations on the Safe token locking contract done by user A
 // can affect the Safe token balance of user B in the locking contract.
