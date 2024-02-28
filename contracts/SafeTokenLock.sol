@@ -84,7 +84,16 @@ contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
         if (user.locked < amount) revert UnlockAmountExceeded();
 
         index = user.unlockEnd;
-        _unlocks[index][msg.sender] = UnlockInfo(amount, uint64(block.timestamp) + COOLDOWN_PERIOD);
+
+        // Use unchecked math for computing the `maturesAt` timestamp for the unlock information.
+        // This means that, in the case of overflows, we would create unlocks that immediately
+        // mature, and allow tokens to be withdrawn before the intended time. However, since we use
+        // a 64-bit timestamp, this can only happen for `maturesAt` values that would be greater
+        // than 2**64, which is hundreds of billions of years in the future. Using unchecked math
+        // here saves gas and code size, without any real downsides.
+        unchecked {
+            _unlocks[index][msg.sender] = UnlockInfo(amount, uint64(block.timestamp) + COOLDOWN_PERIOD);
+        }
 
         // Note that it is possible here for `index + 1` to overflow and revert in the case where
         // `user.unlockEnd == type(uint32).max`. This means that after roughly 4 billion unlocks,

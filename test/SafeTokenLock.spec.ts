@@ -392,9 +392,9 @@ describe('SafeTokenLock', function () {
       // Locking tokens of UnlockN contract
       await unlockN.lockAll()
 
-      // Multiple unlocks in a single transaction do not revert, up to a maximum of 1167 from the block gas limit.
-      await expect(unlockN.unlock(1167, { gasLimit: 30e6 })).to.not.be.rejected
-      await expect(unlockN.unlock(1168, { gasLimit: 30e6 })).to.be.rejected
+      // Multiple unlocks in a single transaction do not revert, up to a maximum restricted by the block gas limit.
+      await expect(unlockN.unlock(1169, { gasLimit: 30e6 })).to.not.be.rejected
+      await expect(unlockN.unlock(1170, { gasLimit: 30e6 })).to.be.rejected
     })
   })
 
