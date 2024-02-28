@@ -88,6 +88,7 @@ hook Sstore _unlocks[KEY uint32 index][KEY address holder].amount uint96 value S
     ghostUnlockAmount[holder][to_mathint(index)] = to_mathint(value);
 }
 
+// Ghost variable that tracks the last timestamp.
 ghost mathint lastTimestamp;
 
 hook TIMESTAMP uint256 time {
@@ -256,6 +257,9 @@ invariant unlockAmountsAreNonZero(address holder)
         ghostUserUnlockStart[holder] <= to_mathint(index) && to_mathint(index) < ghostUserUnlockEnd[holder]
             => ghostUnlockAmount[holder][index] > 0;
 
+// Invariant to prove that the timestamp of the unlock maturity is always
+// increasing. This invariant also proves that newer unlock maturity is always
+// greater than older unlocks.
 invariant timestampsIncreaseWithinCooldownPeriod(address user)
     (forall mathint i. ghostUserUnlockStart[user] <= i && i < ghostUserUnlockEnd[user] => ghostUnlockMaturesAt[user][i] <= lastTimestamp + COOLDOWN_PERIOD()) &&
     (forall mathint i. forall mathint j. i <= j && ghostUserUnlockStart[user] <= i && j < ghostUserUnlockEnd[user] => ghostUnlockMaturesAt[user][i] <= ghostUnlockMaturesAt[user][j]) {
