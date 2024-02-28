@@ -4,6 +4,7 @@ definition MAX_UINT(mathint bitwidth) returns mathint = 2^bitwidth - 1;
 
 methods {
     // SafeTokenLock functions
+    function SAFE_TOKEN() external returns (address) envfree;
     function COOLDOWN_PERIOD() external returns (uint64) envfree;
     function getUnlock(address, uint32) external returns(ISafeTokenLock.UnlockInfo) envfree;
     function getUser(address) external returns(ISafeTokenLock.User) envfree;
@@ -89,12 +90,12 @@ hook Sstore _unlocks[KEY uint32 index][KEY address holder].amount uint96 value S
 }
 
 // Ghost variable that tracks the last timestamp.
-ghost mathint lastTimestamp;
+ghost mathint ghostLastTimestamp;
 
 hook TIMESTAMP uint256 time {
     require to_mathint(time) < MAX_UINT(64) - COOLDOWN_PERIOD();
-    require to_mathint(time) >= lastTimestamp;
-    lastTimestamp = time;
+    require to_mathint(time) >= ghostLastTimestamp;
+    ghostLastTimestamp = time;
 }
 
 // Ghost variables that track the individual unlock mature timestamp.
@@ -263,20 +264,21 @@ invariant unlockAmountsAreNonZero(address holder)
 invariant addressZeroCannotLock()
     getUserTokenBalance(0) == 0;
 
-// Invariant to prove that the timestamp of the unlock maturity is always
-// increasing. This invariant also proves that newer unlock maturity is always
-// greater than older unlocks.
-invariant unlocksAreOrderedByMaturityTimestamp(address user)
+// Invariant to prove that unlock maturity timestamp is always increasing. For any
+// user, newer unlock maturity is always greater than older unlock maturity timestamp.
+invariant unlocksAreOrderedByMaturityTimestamp(uint64 cooldownPeriod, address user)
     (forall mathint i.
-        ghostUserUnlockStart[user] <= i && i < ghostUserUnlockEnd[user] =>
-        ghostUnlockMaturesAt[user][i] <= lastTimestamp + COOLDOWN_PERIOD()) &&
+        ghostUserUnlockStart[user] <= i && i < ghostUserUnlockEnd[user]
+            => ghostUnlockMaturesAt[user][i] <= ghostLastTimestamp + cooldownPeriod) &&
     (forall mathint i. forall mathint j.
-        i <= j && ghostUserUnlockStart[user] <= i && j < ghostUserUnlockEnd[user] =>
-        ghostUnlockMaturesAt[user][i] <= ghostUnlockMaturesAt[user][j]) {
-        preserved {
-            requireInvariant unlockStartBeforeEnd(user);
-        }
+        i <= j && ghostUserUnlockStart[user] <= i && j < ghostUserUnlockEnd[user]
+            => ghostUnlockMaturesAt[user][i] <= ghostUnlockMaturesAt[user][j])
+{
+    preserved {
+        require cooldownPeriod == COOLDOWN_PERIOD();
+        requireInvariant unlockStartBeforeEnd(user);
     }
+}
 
 // Verify that no operations on the Safe token locking contract done by user A
 // can affect the Safe token balance of user B in the locking contract.
@@ -468,4 +470,19 @@ rule getUserTokenBalanceNeverReverts(address holder) {
 rule getUnlockNeverReverts(address holder, uint32 index) {
     getUnlock@withrevert(holder, index);
     assert !lastReverted;
+}
+
+rule configurationNeverChanges(method f) filtered {
+    f -> !f.isView
+} {
+    env e;
+    calldataarg args;
+
+    address safeTokenBefore = SAFE_TOKEN();
+    uint64 cooldownPeriodBefore = COOLDOWN_PERIOD();
+
+    f(e, args);
+
+    assert SAFE_TOKEN() == safeTokenBefore;
+    assert COOLDOWN_PERIOD() == cooldownPeriodBefore;
 }
