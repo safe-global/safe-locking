@@ -102,9 +102,12 @@ contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
     function withdraw(uint32 maxUnlocks) external returns (uint96 amount) {
         User memory user = _users[msg.sender];
         uint32 index = user.unlockStart;
-        uint32 unlockEnd = user.unlockEnd > index + maxUnlocks && maxUnlocks != 0 ? index + maxUnlocks : user.unlockEnd;
+        uint32 withdrawEnd = user.unlockEnd;
+        if (maxUnlocks != 0 && withdrawEnd > uint256(index) + uint256(maxUnlocks)) {
+            withdrawEnd = index + maxUnlocks;
+        }
 
-        for (; index < unlockEnd; index++) {
+        for (; index < withdrawEnd; index++) {
             UnlockInfo memory unlockInfo = _unlocks[index][msg.sender];
             if (unlockInfo.maturesAt > block.timestamp) break;
 

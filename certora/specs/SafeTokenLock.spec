@@ -359,6 +359,29 @@ rule cannotUnlockPastMaxUint32(method f, address holder) filtered {
     assert userAfter.unlocked <= userBefore.unlocked;
 }
 
+// Verify that withdrawing is commutative. That is, withdrawing with
+// `maxUnlocks` of `n` then `m`, is equivalent to `m` then `n`.
+rule withdrawIsCommutative(uint32 maxUnlocks1, uint32 maxUnlocks2) {
+    env e;
+
+    requireInvariant unlockAmountsAreNonZero(e.msg.sender);
+    requireInvariant contractCannotOperateOnItself();
+
+    storage init = lastStorage;
+
+    withdraw(e, maxUnlocks1);
+    withdraw(e, maxUnlocks2);
+
+    storage after1 = lastStorage;
+
+    withdraw@withrevert(e, maxUnlocks2) at init;
+    assert !lastReverted;
+    withdraw@withrevert(e, maxUnlocks1);
+    assert !lastReverted;
+
+    assert lastStorage == after1;
+}
+
 // Verify that it is always possible to, given an initial state with some
 // locked token amount, to fully withdraw the entire locked balance.
 // **Currently this is a "satisfy" rule which is very weak, and will change in
