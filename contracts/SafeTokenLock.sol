@@ -113,6 +113,8 @@ contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
             delete _unlocks[index][msg.sender];
         }
 
+        // Note that we disallow 0 amount `unlock`s. This means that if amount is non-0, that we
+        // withdrew at least one unlock; i.e. `amount > 0 == index > user.unlockStart`.
         if (amount > 0) {
             _users[msg.sender] = User(user.locked, user.unlocked - amount, index, user.unlockEnd);
             IERC20(SAFE_TOKEN).transfer(msg.sender, uint256(amount));
