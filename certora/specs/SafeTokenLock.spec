@@ -68,7 +68,7 @@ ghost mapping(address => mapping(mathint => mathint)) userUnlockAt {
 ghost mathint ghostCooldownPeriod;
 
 hook TIMESTAMP uint256 time {
-    require to_mathint(time) < MAX_UINT64() - ghostCooldownPeriod;
+    require to_mathint(time) < MAX_UINT64() - COOLDOWN_PERIOD();
     require to_mathint(time) >= lastTimestamp;
     lastTimestamp = time;
 }
@@ -125,20 +125,11 @@ hook Sload uint96 v currentContract.users[KEY address user].unlocked STORAGE {
     require userUnlocks[user] == to_mathint(v);
 }
 
-// function checkTimestampWithinCooldown(address user) returns bool {
-//     mathint cooldownPeriod = to_mathint(COOLDOWN_PERIOD());
-//     return (forall mathint i. userStart[user] <= i && i < userEnd[user] => userUnlockAt[user][i] <= lastTimestamp + cooldownPeriod);
-// }
-
-// invariant timestampWithinCooldown(address user)
-//     checkTimestampWithinCooldown(user);
-
 invariant timestampsIncreaseWithinCooldownPeriod(address user)
-    (forall mathint i. userStart[user] <= i && i < userEnd[user] => userUnlockAt[user][i] <= lastTimestamp + ghostCooldownPeriod) &&
+    (forall mathint i. userStart[user] <= i && i < userEnd[user] => userUnlockAt[user][i] <= lastTimestamp + COOLDOWN_PERIOD()) &&
     (forall mathint i. forall mathint j. i <= j && userStart[user] <= i && j < userEnd[user] => userUnlockAt[user][i] <= userUnlockAt[user][j]) {
         preserved {
             requireInvariant unlockStartBeforeEnd(user);
-            require ghostCooldownPeriod == to_mathint(currentContract.COOLDOWN_PERIOD());
         }
     }
 
@@ -179,35 +170,39 @@ invariant unlockedIsSumOfUnlockAmounts(address holder)
         }
     }
 
-// rule withdrawReturnsValueBasedOnMaturedUnlock() {
-//     env e;
-//     uint32 start;
-//     uint32 end;
-//     mathint withdrawAmount;
+rule withdrawReturnsValueBasedOnMaturedUnlock() {
+    env e;
+    uint32 start;
+    uint32 end;
+    mathint withdrawAmount;
 
-//     require e.msg.value == 0;
-//     require !safeToken.paused();
-//     require e.msg.sender != safeToken;
-//     require e.msg.sender != 0;
+    require e.msg.value == 0;
+    require !safeToken.paused();
+    require e.msg.sender != safeToken;
+    require e.msg.sender != 0;
 
-//     start, end = getStartAndEnd(e.msg.sender);
-//     requireInvariant unlockStartBeforeEnd(e.msg.sender);
+    start, end = getStartAndEnd(e.msg.sender);
+    requireInvariant unlockStartBeforeEnd(e.msg.sender);
 
-//     SafeTokenLock.UnlockInfo unlockInfo = getUserUnlock(e.msg.sender, start);
-//     // require to_mathint(unlockInfo.amount) <= to_mathint(safeToken.balanceOf(currentContract)); // https://prover.certora.com/output/232916/89a623fc726b4a0c8067f55df4593f27?anonymousKey=4dbfc191a5f8be32f7cf22394e7b706d107e93cd
-//     requireInvariant contractBalanceEqSumOfLockedAndUnlocked(); // https://prover.certora.com/output/232916/cfd6c0fdf7244c44af9f5f0e73f9a3eb?anonymousKey=c621b114d8ae9654d6cd425ad355ce3d7e826f3f
-//     requireInvariant unlockedIsSumOfUnlockAmounts(e.msg.sender); // https://prover.certora.com/output/232916/c6a87caca06d4fa384612c21a9064899?anonymousKey=fd4006be60ce8f843954974a86b7f0a3c29770f4
-//     require userUnlocks[e.msg.sender] <= totalUnlocked;
+    SafeTokenLock.UnlockInfo unlockInfo = getUserUnlock(e.msg.sender, start);
+    requireInvariant unlockedAmountNonZero(e.msg.sender);
 
-//     withdrawAmount = withdraw@withrevert(e, 0);
-//     assert !lastReverted;
+    // require to_mathint(unlockInfo.amount) <= to_mathint(safeToken.balanceOf(currentContract)); // https://prover.certora.com/output/232916/89a623fc726b4a0c8067f55df4593f27?anonymousKey=4dbfc191a5f8be32f7cf22394e7b706d107e93cd
+    requireInvariant contractBalanceEqSumOfLockedAndUnlocked(); // https://prover.certora.com/output/232916/cfd6c0fdf7244c44af9f5f0e73f9a3eb?anonymousKey=c621b114d8ae9654d6cd425ad355ce3d7e826f3f
+    requireInvariant unlockedIsSumOfUnlockAmounts(e.msg.sender); // https://prover.certora.com/output/232916/c6a87caca06d4fa384612c21a9064899?anonymousKey=fd4006be60ce8f843954974a86b7f0a3c29770f4
+    require userLocks[e.msg.sender] <= totalLocked;
+    require userUnlocks[e.msg.sender] <= totalUnlocked;
+    require e.msg.sender != currentContract => safeToken.balanceOf(e.msg.sender) + safeToken.balanceOf(currentContract) <= to_mathint(safeToken.totalSupply());
 
-//     if(start == end || (to_mathint(unlockInfo.unlockedAt) > to_mathint(e.block.timestamp) && unlockInfo.amount > 0)) { // unlockInfo.amount > 0 is problematic, as for multiple unlocks, the first one could be zero but the rest could be higher.
-//         assert withdrawAmount == 0;
-//     } else {
-//         assert withdrawAmount > 0;
-//     }
-// }
+    withdrawAmount = withdraw@withrevert(e, 0);
+    assert !lastReverted;
+
+    if(start == end || (to_mathint(unlockInfo.unlockedAt) > to_mathint(e.block.timestamp))) { // unlockInfo.amount > 0 is problematic, as for multiple unlocks, the first one could be zero but the rest could be higher.
+        assert withdrawAmount == 0;
+    } else {
+        assert withdrawAmount > 0;
+    }
+}
 
 rule doesNotAffectOtherUserBalance(method f) {
     env e;  
@@ -310,7 +305,6 @@ rule alwaysPossibleToWithdraw(address sender, uint96 amount) {
     requireInvariant unlockStartBeforeEnd(sender);
     requireInvariant unlockedIsSumOfUnlockAmounts(sender);
     requireInvariant timestampsIncreaseWithinCooldownPeriod(sender);
-    require ghostCooldownPeriod == to_mathint(COOLDOWN_PERIOD());
 
     env e;
     env eW; // env for withdraw
