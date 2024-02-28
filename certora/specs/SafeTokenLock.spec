@@ -577,3 +577,18 @@ rule onlyOwnerOrPendingOwnerCanChangePendingOwner(method f) filtered {
         || (e.msg.sender == pendingOwnerBefore
             && f.selector == sig:acceptOwnership().selector);
 }
+
+// Verify that index received from `unlock` is always the last `unlockEnd`.
+rule unlockIndexShouldReturnLastEndIndex() {
+    env e;
+
+    require e.msg.value == 0;
+    require ghostUserLocked[e.msg.sender] > 0;
+
+    requireInvariant unlockStartBeforeEnd(e.msg.sender);
+
+    uint32 end = getUser(e.msg.sender).unlockEnd;
+
+    uint32 index = unlock@withrevert(e, _);
+    assert !lastReverted => index == end;
+}
