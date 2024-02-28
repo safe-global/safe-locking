@@ -472,6 +472,7 @@ rule getUnlockNeverReverts(address holder, uint32 index) {
     assert !lastReverted;
 }
 
+// Verify that the `SAFE_TOKEN` and `COOLDOWN_PERIOD` never changes.
 rule configurationNeverChanges(method f) filtered {
     f -> !f.isView
 } {
