@@ -13,6 +13,10 @@ methods {
     function unlock(uint32, uint96) external returns(bool);
     function withdraw(uint32) external returns (uint96);
 
+    // Ownable/Ownable2Step functions
+    function owner() external returns (address) envfree;
+    function pendingOwner() external returns (address) envfree;
+
     // Harnessed functions
     function harnessGetUserUnlockSum(address) external returns(uint256) envfree;
 
@@ -486,4 +490,90 @@ rule configurationNeverChanges(method f) filtered {
 
     assert SAFE_TOKEN() == safeTokenBefore;
     assert COOLDOWN_PERIOD() == cooldownPeriodBefore;
+}
+
+// Verify that an owner can always transfer ownership, thus it never gets
+// "stuck" under specific conditions.
+rule ownerCanAlwaysTransferOwnership(address newOwner) {
+    env e;
+
+    require e.msg.sender == owner();
+    require e.msg.value == 0;
+
+    transferOwnership@withrevert(e, newOwner);
+
+    assert !lastReverted;
+    assert owner() == e.msg.sender;
+    assert pendingOwner() == newOwner;
+}
+
+// Verify that a pending owner can always accept ownership after transfer.
+rule pendingOwnerCanAlwaysAcceptOwnership() {
+    env e;
+
+    require e.msg.sender == pendingOwner();
+    require e.msg.value == 0;
+
+    acceptOwnership@withrevert(e);
+
+    assert !lastReverted;
+    assert owner() == e.msg.sender;
+    assert pendingOwner() == 0;
+}
+
+// Verify that an owner can always renounce ownership.
+rule ownerCanAlwaysRenounceOwnership() {
+    env e;
+
+    require e.msg.sender == owner();
+    require e.msg.value == 0;
+
+    renounceOwnership@withrevert(e);
+
+    assert !lastReverted;
+    assert owner() == 0;
+    assert pendingOwner() == 0;
+}
+
+// Verify that only the `owner` (when renouncing ownership) and the
+// `pendingOwner` (when accepting ownership) can change the value of the
+// contract `owner`.
+rule onlyOwnerOrPendingOwnerCanChangeOwner(method f) filtered {
+    f -> !f.isView
+} {
+    env e;
+    calldataarg args;
+
+    address pendingOwnerBefore = pendingOwner();
+    address ownerBefore = owner();
+
+    f(e, args);
+
+    assert owner() != ownerBefore
+        => (e.msg.sender == ownerBefore
+            && f.selector == sig:renounceOwnership().selector)
+        || (e.msg.sender == pendingOwnerBefore
+            && f.selector == sig:acceptOwnership().selector);
+}
+
+// Verify that only the `owner` (when transferring or renouncing ownership) and
+// the `pendingOwner` (when accepting ownership) can change the value of the
+// contract `pendingOwner`.
+rule onlyOwnerOrPendingOwnerCanChangePendingOwner(method f) filtered {
+    f -> !f.isView
+} {
+    env e;
+    calldataarg args;
+
+    address pendingOwnerBefore = pendingOwner();
+    address ownerBefore = owner();
+
+    f(e, args);
+
+    assert pendingOwner() != pendingOwnerBefore
+        => (e.msg.sender == ownerBefore
+            && (f.selector == sig:renounceOwnership().selector
+                || f.selector == sig:transferOwnership(address).selector))
+        || (e.msg.sender == pendingOwnerBefore
+            && f.selector == sig:acceptOwnership().selector);
 }
