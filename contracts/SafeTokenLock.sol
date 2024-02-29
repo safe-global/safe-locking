@@ -14,9 +14,9 @@ import {ISafeTokenLock} from "./interfaces/ISafeTokenLock.sol";
  */
 contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
     /**
-     * @notice Error indicating an attempt to use the zero {address} as Safe token address.
+     * @notice Error indicating an attempt to use an invalid Safe token, whose {totalSupply} is greater than `type(uint96).max`.
      */
-    error InvalidSafeTokenAddress();
+    error InvalidSafeToken();
 
     /**
      * @notice Error indicating an attempt to use zero as cooldown period value.
@@ -52,11 +52,14 @@ contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
     /**
      * @notice Creates a new instance of the Safe token locking contract.
      * @param initialOwner Initial owner of the contract.
-     * @param safeToken Address of the Safe token. Passing the zero {address} will revert with {InvalidSafeTokenAddress}.
+     * @param safeToken Address of the Safe token. Passing it a token whose {totalSupply} is greater than `type(uint96).max` will revert with {InvalidSafeToken}.
      * @param cooldownPeriod The minimum period in seconds after which Safe token withdrawal can be performed. Passing zero will revert with {InvalidTokenAmount}.
+     * @dev This contract uses {uint96} values for token amount accounting, meaning that the token's {totalSupply} must not overflow a {uint96}.
+     *      This is checked by the constructor, but can be circumvented by inflationary tokens where the {totalSupply} can increase, which should not be used with this contract.
+     *      Luckily the Safe token's {totalSupply} both fits in a {uint96} and is constant, meaning it works with this locking contract.
      */
     constructor(address initialOwner, address safeToken, uint32 cooldownPeriod) Ownable(initialOwner) {
-        if (safeToken == address(0)) revert InvalidSafeTokenAddress();
+        if (IERC20(safeToken).totalSupply() > type(uint96).max) revert InvalidSafeToken();
         if (cooldownPeriod == 0) revert InvalidCooldownPeriod();
 
         SAFE_TOKEN = safeToken;
