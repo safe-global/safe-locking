@@ -4,8 +4,8 @@ definition MAX_UINT(mathint bitwidth) returns mathint = 2^bitwidth - 1;
 
 methods {
     // SafeTokenLock functions
-    function SAFE_TOKEN() external returns (address) envfree;
     function COOLDOWN_PERIOD() external returns (uint64) envfree;
+    function SAFE_TOKEN() external returns (address) envfree;
     function getUnlock(address, uint32) external returns(ISafeTokenLock.UnlockInfo) envfree;
     function getUser(address) external returns(ISafeTokenLock.User) envfree;
     function getUserTokenBalance(address) external returns (uint96) envfree;
@@ -182,6 +182,7 @@ invariant contractBalanceIsGreaterThanTotalLockedAndUnlockedAmounts()
 {
     preserved with (env e) {
         setupRequireSafeTokenInvariants(currentContract, e.msg.sender);
+        requireInvariant userUnlockedIsSumOfUnlockAmounts(e.msg.sender);
         require e.msg.sender != currentContract;
     }
     preserved safeTokenContract.transferFrom(address from, address to, uint256 value) with (env e) {
@@ -225,6 +226,7 @@ invariant userTokenBalanceIsLessThanTotalSupply(address holder)
     preserved with (env e) {
         setupRequireSafeTokenInvariants(currentContract, holder);
         requireInvariant contractBalanceIsGreaterThanTotalLockedAndUnlockedAmounts();
+        requireInvariant userUnlockedIsSumOfUnlockAmounts(holder);
         requireInvariant totalLockedIsGreaterThanUserLocked(holder);
         requireInvariant totalUnlockedIsGreaterThanUserUnlocked(holder);
         require e.msg.sender != currentContract;
@@ -262,7 +264,12 @@ invariant unlockAmountsAreNonZero(address holder)
     // required because of limitations with the `index` universal quantifier.
     forall uint32 index.
         ghostUserUnlockStart[holder] <= to_mathint(index) && to_mathint(index) < ghostUserUnlockEnd[holder]
-            => ghostUnlockAmount[holder][index] > 0;
+            => ghostUnlockAmount[holder][index] > 0
+{
+    preserved {
+        requireInvariant userUnlockedIsSumOfUnlockAmounts(holder);
+    }
+}
 
 // Invariant that proves that the user token balance of the zero address in the
 // locking contract is always zero. This is important to ensure that the zero
@@ -347,6 +354,8 @@ rule unlockMaturityTimestampDoesNotChange(method f, address holder) filtered {
     env e;
     calldataarg args;
 
+    requireInvariant userUnlockedIsSumOfUnlockAmounts(holder);
+
     ISafeTokenLock.User userBefore = getUser(holder);
     uint32 index = userBefore.unlockStart;
     ISafeTokenLock.UnlockInfo unlockInfoBefore = getUnlock(holder, index);
@@ -371,13 +380,37 @@ rule unlockMaturityTimestampDoesNotChange(method f, address holder) filtered {
 rule cannotWithdrawMoreThanUnlocked() {
     env e;
 
+    requireInvariant userUnlockedIsSumOfUnlockAmounts(e.msg.sender);
+
     uint256 balanceBefore = safeTokenContract.balanceOf(e.msg.sender);
-    mathint unlockedBefore = getUser(e.msg.sender).unlocked;
+    uint96 unlockedBefore = getUser(e.msg.sender).unlocked;
 
     withdraw(e, _);
 
-    uint256 balanceAfter = safeTokenContract.balanceOf(e.msg.sender);
-    assert to_mathint(balanceAfter) <= balanceBefore + unlockedBefore;
+    assert to_mathint(safeTokenContract.balanceOf(e.msg.sender))
+        <= balanceBefore + unlockedBefore;
+}
+
+// Verify that withdrawing returns the exact amount of tokens that were
+// transferred out and the user total amounts are correctly updated.
+rule withdrawAmountCorrectness() {
+    env e;
+
+    setupRequireSafeTokenInvariants(currentContract, e.msg.sender);
+    requireInvariant userUnlockedIsSumOfUnlockAmounts(e.msg.sender);
+    requireInvariant contractCannotOperateOnItself();
+
+    uint256 balanceBefore = safeTokenContract.balanceOf(e.msg.sender);
+    uint96 lockedBefore = getUser(e.msg.sender).locked;
+    uint96 unlockedBefore = getUser(e.msg.sender).unlocked;
+    uint96 userTokenBalanceBefore = getUserTokenBalance(e.msg.sender);
+
+    uint96 amount = withdraw(e, _);
+
+    assert to_mathint(safeTokenContract.balanceOf(e.msg.sender)) == balanceBefore + amount;
+    assert getUser(e.msg.sender).locked == lockedBefore;
+    assert to_mathint(getUser(e.msg.sender).unlocked) == unlockedBefore - amount;
+    assert to_mathint(getUserTokenBalance(e.msg.sender)) == userTokenBalanceBefore - amount;
 }
 
 // Verify that unlock tokens can only be withdrawn once they mature.
@@ -401,6 +434,8 @@ rule cannotUnlockPastMaxUint32(method f, address holder) filtered {
     env e;
     calldataarg args;
 
+    requireInvariant userUnlockedIsSumOfUnlockAmounts(holder);
+
     ISafeTokenLock.User userBefore = getUser(holder);
     require to_mathint(userBefore.unlockEnd) == MAX_UINT(32);
 
@@ -417,6 +452,7 @@ rule withdrawIsCommutative(uint32 maxUnlocks1, uint32 maxUnlocks2) {
     env e;
 
     requireInvariant unlockAmountsAreNonZero(e.msg.sender);
+    requireInvariant userUnlockedIsSumOfUnlockAmounts(e.msg.sender);
     requireInvariant contractCannotOperateOnItself();
 
     storage init = lastStorage;
@@ -703,4 +739,64 @@ rule canAlwaysWithdrawEverythingAfterMaturity() {
     assert userAfter.unlocked == 0;
     assert userAfter.unlockStart == userAfter.unlockEnd;
     assert userAfter.unlockEnd == userBefore.unlockEnd;
+}
+
+// Verify that index received from `unlock` is always the last `unlockEnd`.
+rule unlockIndexShouldReturnLastEndIndex() {
+    env e;
+
+    requireInvariant unlockStartBeforeEnd(e.msg.sender);
+
+    uint32 end = getUser(e.msg.sender).unlockEnd;
+
+    uint32 index = unlock@withrevert(e, _);
+    assert !lastReverted => index == end;
+}
+
+// Verify that the user can always lock tokens. Notable exceptions are not
+// having enough allowance to locking contract, not having enough balance,
+// passed amount being zero and the Safe token contract being paused.
+rule canAlwaysLock(uint96 amount) {
+    env e;
+
+    require e.msg.value == 0;
+    require e.msg.sender != 0;
+    require !safeTokenContract.paused();
+
+    setupRequireSafeTokenInvariants(currentContract, e.msg.sender);
+
+    requireInvariant totalLockedIsGreaterThanUserLocked(e.msg.sender);
+    requireInvariant totalUnlockedIsGreaterThanUserUnlocked(e.msg.sender);
+    requireInvariant contractBalanceIsGreaterThanTotalLockedAndUnlockedAmounts();
+    requireInvariant userUnlockedIsSumOfUnlockAmounts(e.msg.sender);
+
+    bool enoughAllowance = to_mathint(safeTokenContract.allowance(e.msg.sender, currentContract)) >= to_mathint(amount);
+    bool enoughBalance = to_mathint(safeTokenContract.balanceOf(e.msg.sender)) >= to_mathint(amount);
+
+    lock@withrevert(e, amount);
+
+    if (enoughAllowance && enoughBalance && amount > 0) {
+        assert !lastReverted;
+    } else {
+        assert lastReverted;
+    }
+}
+
+// Verify that the user can always unlock tokens. If locked tokens are less than
+// before, then unlocked tokens are more by exactly the difference than before.
+rule allLockedCanGetUnlocked(method f) filtered {
+    f -> !f.isView
+} {
+    env e;
+    calldataarg arg;
+
+    ISafeTokenLock.User userBefore = getUser(e.msg.sender);
+
+    f(e, arg);
+
+    ISafeTokenLock.User userAfter = getUser(e.msg.sender);
+
+    assert userBefore.locked > userAfter.locked
+        => userBefore.locked - userAfter.locked
+            == userAfter.unlocked - userBefore.unlocked;
 }
