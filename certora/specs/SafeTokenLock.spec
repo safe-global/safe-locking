@@ -579,6 +579,19 @@ rule onlyOwnerOrPendingOwnerCanChangePendingOwner(method f) filtered {
             && f.selector == sig:acceptOwnership().selector);
 }
 
+// Verify that index received from `unlock` is always the last `unlockEnd`.
+rule unlockIndexShouldReturnLastEndIndex() {
+    env e;
+
+    require e.msg.value == 0;
+    requireInvariant unlockStartBeforeEnd(e.msg.sender);
+
+    uint32 end = getUser(e.msg.sender).unlockEnd;
+
+    uint32 index = unlock@withrevert(e, _);
+    assert !lastReverted => index == end;
+}
+
 // Verify that the user can always lock tokens. Notable exceptions are not
 // having enough allowance to locking contract, not having enough balance,
 // passed amount being zero and the Safe token contract being paused.
