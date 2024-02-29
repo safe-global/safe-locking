@@ -584,8 +584,6 @@ rule unlockIndexShouldReturnLastEndIndex() {
     env e;
 
     require e.msg.value == 0;
-    require ghostUserLocked[e.msg.sender] > 0;
-
     requireInvariant unlockStartBeforeEnd(e.msg.sender);
 
     uint32 end = getUser(e.msg.sender).unlockEnd;
