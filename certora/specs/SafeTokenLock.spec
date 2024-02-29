@@ -674,3 +674,67 @@ rule allLockedCanGetUnlocked(method f) filtered {
         => userBefore.locked - userAfter.locked
             == userAfter.unlocked - userBefore.unlocked;
 }
+
+// Verify that it is not possible to frontrun, except certain scenarios.
+rule noFrontRunning(method f, method g) filtered {
+    f -> !f.isView && f.contract == currentContract,
+    g -> !g.isView
+} {
+    env e1; // Possibly a victim.
+    env e2; // Possibly an evil actor.
+
+    address from;
+    address to;
+    uint256 amount;
+
+    require e1.msg.sender != e2.msg.sender;
+    require e1.msg.sender != owner();
+    require e1.msg.sender != safeTokenContract;
+    require e1.msg.sender != currentContract;
+    require e2.msg.sender != currentContract;
+
+    require !safeTokenContract.paused();
+
+    requireInvariant contractBalanceIsGreaterThanTotalLockedAndUnlockedAmounts();
+    requireInvariant noAllowanceForSafeTokenLock(e2.msg.sender);
+    requireInvariant userUnlockedIsSumOfUnlockAmounts(e1.msg.sender);
+    requireInvariant userUnlockedIsSumOfUnlockAmounts(e2.msg.sender);
+
+    require ghostUserLocked[e1.msg.sender] + ghostUserLocked[e2.msg.sender] <= ghostTotalLocked;
+    require ghostUserUnlocked[e1.msg.sender] + ghostUserUnlocked[e2.msg.sender] <= ghostTotalUnlocked;
+    require safeTokenContract.balanceOf(e1.msg.sender) + safeTokenContract.balanceOf(e2.msg.sender) + safeTokenContract.balanceOf(currentContract)
+        <= to_mathint(safeTokenContract.totalSupply());
+    require from != e1.msg.sender && from != currentContract
+        => safeTokenContract.balanceOf(e1.msg.sender) + safeTokenContract.balanceOf(from) + safeTokenContract.balanceOf(currentContract)
+            <= to_mathint(safeTokenContract.totalSupply());
+
+    calldataarg args1;
+    calldataarg args2;
+
+    storage initState = lastStorage;
+
+    address beforeOwner = owner();
+    address beforePendingOwner = pendingOwner();
+    uint256 beforeAllowance = safeTokenContract.allowance(e1.msg.sender,e2.msg.sender);
+
+    f(e1, args1);
+    if (g.selector == sig:SafeTokenHarness.transferFrom(address,address,uint256).selector) {
+        safeTokenContract.transferFrom@withrevert(e2, from, to, amount);
+    } else {
+        g@withrevert(e2, args2);
+    }
+
+    storage after1 = lastStorage;
+
+    if (g.selector == sig:SafeTokenHarness.transferFrom(address,address,uint256).selector) {
+        safeTokenContract.transferFrom@withrevert(e2, from, to, amount) at initState;
+    } else {
+        g(e2, args2) at initState;
+    }
+    f@withrevert(e1, args1);
+
+    assert
+        (lastStorage == after1 && !lastReverted) ||
+        (f.selector == sig:acceptOwnership().selector && e1.msg.sender == beforePendingOwner && e2.msg.sender == beforeOwner) ||
+        (g.selector == sig:SafeTokenHarness.transferFrom(address,address,uint256).selector && beforeAllowance > 0);
+}
