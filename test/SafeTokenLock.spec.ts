@@ -40,18 +40,32 @@ describe('SafeTokenLock', function () {
       expect(await safeTokenLock.COOLDOWN_PERIOD()).to.equal(getDeploymentParameters().cooldownPeriod)
     })
 
-    it('Should not deploy with zero address', async function () {
-      const SafeTokenLock = await ethers.getContractFactory('SafeTokenLock')
+    it('Should not deploy with zero Safe token address', async function () {
       const { initialOwner, cooldownPeriod } = getDeploymentParameters()
-      await expect(SafeTokenLock.deploy(initialOwner, ZeroAddress, cooldownPeriod)).to.be.revertedWithCustomError(
+
+      const SafeTokenLock = await ethers.getContractFactory('SafeTokenLock')
+      await expect(SafeTokenLock.deploy(initialOwner, ZeroAddress, cooldownPeriod)).to.be.reverted
+    })
+
+    it('Should not deploy with a Safe token whose total supply is too large', async function () {
+      const { initialOwner, cooldownPeriod } = getDeploymentParameters()
+
+      const TestERC20 = await ethers.getContractFactory('TestERC20')
+      const token = await TestERC20.deploy()
+      await token.mint(initialOwner, ethers.MaxUint256)
+
+      const SafeTokenLock = await ethers.getContractFactory('SafeTokenLock')
+      await expect(SafeTokenLock.deploy(initialOwner, token, cooldownPeriod)).to.be.revertedWithCustomError(
         SafeTokenLock,
-        'InvalidSafeTokenAddress()',
+        'InvalidSafeToken()',
       )
     })
 
     it('Should not deploy with zero cooldown period', async function () {
+      const { safeToken } = await setupTests()
+      const { initialOwner } = getDeploymentParameters()
+
       const SafeTokenLock = await ethers.getContractFactory('SafeTokenLock')
-      const { initialOwner, safeToken } = getDeploymentParameters()
       await expect(SafeTokenLock.deploy(initialOwner, safeToken, 0)).to.be.revertedWithCustomError(SafeTokenLock, 'InvalidCooldownPeriod()')
     })
   })
@@ -393,8 +407,8 @@ describe('SafeTokenLock', function () {
       await unlockN.lockAll()
 
       // Multiple unlocks in a single transaction do not revert, up to a maximum restricted by the block gas limit.
-      await expect(unlockN.unlock(1169, { gasLimit: 30e6 })).to.not.be.rejected
-      await expect(unlockN.unlock(1170, { gasLimit: 30e6 })).to.be.rejected
+      await expect(unlockN.unlock(1169, { gasLimit: 30e6 })).to.not.be.reverted
+      await expect(unlockN.unlock(1170, { gasLimit: 30e6 })).to.be.reverted
     })
   })
 
@@ -987,21 +1001,22 @@ describe('SafeTokenLock', function () {
   describe('Token Rescue', function () {
     it('Should allow rescuing tokens other other than Safe token', async () => {
       const { safeToken, safeTokenLock, owner, alice } = await setupTests()
-      const erc20 = await (await ethers.getContractFactory('TestERC20')).deploy('TEST', 'TEST')
+      const TestERC20 = await ethers.getContractFactory('TestERC20')
+      const token = await TestERC20.deploy()
 
       const amount = 1n
-      await erc20.mint(safeTokenLock, amount)
+      await token.mint(safeTokenLock, amount)
 
-      const aliceBalanceBefore = await erc20.balanceOf(alice)
-      const contractBalanceBefore = await erc20.balanceOf(safeTokenLock)
+      const aliceBalanceBefore = await token.balanceOf(alice)
+      const contractBalanceBefore = await token.balanceOf(safeTokenLock)
       const contractSafeTokenBalanceBefore = await safeToken.balanceOf(safeTokenLock)
 
-      await safeTokenLock.connect(owner).rescueToken(erc20, alice, amount)
+      await safeTokenLock.connect(owner).rescueToken(token, alice, amount)
 
-      const aliceBalanceAfter = await erc20.balanceOf(alice)
+      const aliceBalanceAfter = await token.balanceOf(alice)
       expect(aliceBalanceAfter).equals(aliceBalanceBefore + amount)
 
-      const contractBalanceAfter = await erc20.balanceOf(safeTokenLock)
+      const contractBalanceAfter = await token.balanceOf(safeTokenLock)
       expect(contractBalanceAfter).equals(contractBalanceBefore - amount)
 
       const contractSafeTokenBalanceAfter = await safeToken.balanceOf(safeTokenLock)
