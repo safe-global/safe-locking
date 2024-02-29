@@ -24,6 +24,7 @@ methods {
     function safeTokenContract.allowance(address, address) external returns(uint256) envfree;
     function safeTokenContract.balanceOf(address) external returns(uint256) envfree;
     function safeTokenContract.totalSupply() external returns(uint256) envfree;
+    function safeTokenContract.paused() external returns(bool) envfree;
 
     // Prevent SafeTokenHarness.transfer to cause HAVOC
     function _.transfer(address,uint256) external => NONDET UNRESOLVED;
@@ -591,4 +592,52 @@ rule unlockIndexShouldReturnLastEndIndex() {
 
     uint32 index = unlock@withrevert(e, _);
     assert !lastReverted => index == end;
+}
+
+// Verify that the user can always lock tokens. Notable exceptions are not
+// having enough allowance to locking contract, not having enough balance,
+// passed amount being zero and the Safe token contract being paused.
+rule canAlwaysLock(uint96 amount) {
+    env e;
+
+    require e.msg.value == 0;
+    require e.msg.sender != 0;
+    require !safeTokenContract.paused();
+
+    setupRequireSafeTokenInvariants(currentContract, e.msg.sender);
+
+    requireInvariant totalLockedIsGreaterThanUserLocked(e.msg.sender);
+    requireInvariant totalUnlockedIsGreaterThanUserUnlocked(e.msg.sender);
+    requireInvariant contractBalanceIsGreaterThanTotalLockedAndUnlockedAmounts();
+    requireInvariant userUnlockedIsSumOfUnlockAmounts(e.msg.sender);
+
+    bool enoughAllowance = to_mathint(safeTokenContract.allowance(e.msg.sender, currentContract)) >= to_mathint(amount);
+    bool enoughBalance = to_mathint(safeTokenContract.balanceOf(e.msg.sender)) >= to_mathint(amount);
+
+    lock@withrevert(e, amount);
+
+    if (enoughAllowance && enoughBalance && amount > 0) {
+        assert !lastReverted;
+    } else {
+        assert lastReverted;
+    }
+}
+
+// Verify that the user can always unlock tokens. If locked tokens are less than
+// before, then unlocked tokens are more by exactly the difference than before.
+rule allLockedCanGetUnlocked(method f) filtered {
+    f -> !f.isView
+} {
+    env e;
+    calldataarg arg;
+
+    ISafeTokenLock.User userBefore = getUser(e.msg.sender);
+
+    f(e, arg);
+
+    ISafeTokenLock.User userAfter = getUser(e.msg.sender);
+
+    assert userBefore.locked > userAfter.locked
+        => userBefore.locked - userAfter.locked
+            == userAfter.unlocked - userBefore.unlocked;
 }
