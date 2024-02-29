@@ -619,7 +619,6 @@ rule onlyOwnerOrPendingOwnerCanChangePendingOwner(method f) filtered {
 rule unlockIndexShouldReturnLastEndIndex() {
     env e;
 
-    require e.msg.value == 0;
     requireInvariant unlockStartBeforeEnd(e.msg.sender);
 
     uint32 end = getUser(e.msg.sender).unlockEnd;
