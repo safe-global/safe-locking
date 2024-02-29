@@ -86,7 +86,8 @@ contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
         User memory user = _users[msg.sender];
         if (user.locked < amount) revert UnlockAmountExceeded();
 
-        // Use of unchecked math here is sound as we just checked that `user.locked >= amount`.
+        // Use of unchecked math here is sound as we would have reverted if `user.locked < amount`,
+        // meaning the following subtraction cannot overflow.
         uint96 locked;
         unchecked {
             locked = user.locked - amount;
