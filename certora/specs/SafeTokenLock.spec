@@ -720,8 +720,8 @@ rule canAlwaysWithdrawEverythingAfterMaturity() {
     ISafeTokenLock.User userBefore = getUser(e.msg.sender);
 
     uint32 lastUnlockIndex = harnessGetUserLastUnlockOperationIndex(e.msg.sender);
-    require e.block.timestamp + COOLDOWN_PERIOD() < MAX_UINT(64);
-    require to_mathint(e.block.timestamp) > to_mathint(getUnlock(e.msg.sender, lastUnlockIndex).maturesAt);
+    require e.block.timestamp + COOLDOWN_PERIOD() <= MAX_UINT(64);
+    require to_mathint(e.block.timestamp) >= to_mathint(getUnlock(e.msg.sender, lastUnlockIndex).maturesAt);
 
     uint96 amount = withdraw@withrevert(e, 0);
     assert !lastReverted;
