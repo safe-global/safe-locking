@@ -86,6 +86,12 @@ contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
         User memory user = _users[msg.sender];
         if (user.locked < amount) revert UnlockAmountExceeded();
 
+        // Use of unchecked math here is sound as we just checked that `user.locked >= amount`.
+        uint96 locked;
+        unchecked {
+            locked = user.locked - amount;
+        }
+
         index = user.unlockEnd;
 
         // Use unchecked math for computing the `maturesAt` timestamp for the unlock information.
@@ -103,7 +109,7 @@ contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
         // it is possible for funds to remain stuck in the locking contract. The amount of gas
         // required to perform 4 billion unlocks is prohibitively high, and we do not believe that
         // a user will realistically hit this limit.
-        _users[msg.sender] = User(user.locked - amount, user.unlocked + amount, user.unlockStart, index + 1);
+        _users[msg.sender] = User(locked, user.unlocked + amount, user.unlockStart, index + 1);
 
         emit Unlocked(msg.sender, index, amount);
     }
@@ -115,15 +121,30 @@ contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
         User memory user = _users[msg.sender];
         uint32 index = user.unlockStart;
         uint32 withdrawEnd = user.unlockEnd;
-        if (maxUnlocks != 0 && withdrawEnd > uint256(index) + uint256(maxUnlocks)) {
-            withdrawEnd = index + maxUnlocks;
+
+        // Use of unchecked math here is sound as:
+        // 1. `uint256(index) + uint256(maxUnlocks)` cannot overflow a `uint256`, as both are 32-bit
+        //    integers, and thus have a maximum value of `0xffffffff` individually, making the
+        //    maximum value of their sum as `0x1fffffffe`.
+        // 2. `index + maxUnlocks` cannot overflow a `uint32`, as this line is only called if the
+        //    check that `uint256(withdrawEnd) > uint256(index) + uint256(maxUnlocks)` is true,
+        //    which implies that the sum is less than `withdrawEnd`, which is itself a `uint32`.
+        unchecked {
+            if (maxUnlocks != 0 && uint256(withdrawEnd) > uint256(index) + uint256(maxUnlocks)) {
+                withdrawEnd = index + maxUnlocks;
+            }
         }
 
         for (; index < withdrawEnd; index++) {
             UnlockInfo memory unlockInfo = _unlocks[index][msg.sender];
             if (unlockInfo.maturesAt > block.timestamp) break;
 
-            amount += unlockInfo.amount;
+            // This contract maintains the invariant that `user.unlocked == ∑ unlockInfo.amount`,
+            // therefore, `amount + unlockInfo.amount<= user.unlocked` and, since `user.unlocked` is
+            // a `uint96`, this sum cannot overflow a `uint96`.
+            unchecked {
+                amount += unlockInfo.amount;
+            }
             emit Withdrawn(msg.sender, index, unlockInfo.amount);
             delete _unlocks[index][msg.sender];
         }
@@ -131,7 +152,11 @@ contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
         // Note that we disallow 0 amount `unlock`s. This means that if amount is non-0, that we
         // withdrew at least one unlock; i.e. `amount > 0 == index > user.unlockStart`.
         if (amount > 0) {
-            _users[msg.sender] = User(user.locked, user.unlocked - amount, index, user.unlockEnd);
+            // This contract maintains the invariant that `user.unlocked == ∑ unlockInfo.amount`,
+            // therefore, `amount <= user.unlocked` and this subtraction cannot overflow.
+            unchecked {
+                _users[msg.sender] = User(user.locked, user.unlocked - amount, index, user.unlockEnd);
+            }
             IERC20(SAFE_TOKEN).transfer(msg.sender, uint256(amount));
         }
     }
