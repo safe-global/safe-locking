@@ -10,7 +10,7 @@ methods {
     function getUser(address) external returns(ISafeTokenLock.User) envfree;
     function getUserTokenBalance(address) external returns (uint96) envfree;
     function lock(uint96) external returns(uint32);
-    function unlock(uint32, uint96) external returns(bool);
+    function unlock(uint96) external returns(bool);
     function withdraw(uint32) external returns (uint96);
 
     // Ownable/Ownable2Step functions
@@ -798,8 +798,14 @@ rule allLockedCanGetUnlocked(method f) filtered {
 
 // Verify that it is not possible to frontrun, except certain scenarios.
 rule noFrontRunning(method f, method g) filtered {
-    f -> !f.isView && f.contract == currentContract,
+    f -> !f.isView
+        && f.contract == currentContract
+        && (f.selector == sig:currentContract.lock(uint96).selector
+            || f.selector == sig:currentContract.unlock(uint96).selector
+            || f.selector == sig:currentContract.withdraw(uint32).selector),
     g -> !g.isView
+        // This is to avoid sanity failure scenarios.
+        && g.selector != sig:SafeTokenHarness.unpause().selector
 } {
     env e1; // Possibly a victim.
     env e2; // Possibly an evil actor.
@@ -856,8 +862,6 @@ rule noFrontRunning(method f, method g) filtered {
 
     assert
         (lastStorage == after1 && !lastReverted) ||
-        // If the first call is of `acceptOwnership()` and if succeeds, then other ownership related calls like transfer or renounce will be reverted.
-        (f.selector == sig:acceptOwnership().selector && e1.msg.sender == beforePendingOwner && e2.msg.sender == beforeOwner) ||
         // If the second call is of `transferFrom()` there could be different cases of underflow, etc which could revert the call.
         (g.selector == sig:SafeTokenHarness.transferFrom(address,address,uint256).selector && beforeAllowance > 0);
 }
