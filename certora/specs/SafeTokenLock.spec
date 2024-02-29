@@ -735,6 +735,8 @@ rule noFrontRunning(method f, method g) filtered {
 
     assert
         (lastStorage == after1 && !lastReverted) ||
+        // If the first call is of `acceptOwnership()` and if succeeds, then other ownership related calls like transfer or renounce will be reverted.
         (f.selector == sig:acceptOwnership().selector && e1.msg.sender == beforePendingOwner && e2.msg.sender == beforeOwner) ||
+        // If the second call is of `transferFrom()` there could be different cases of underflow, etc which could revert the call.
         (g.selector == sig:SafeTokenHarness.transferFrom(address,address,uint256).selector && beforeAllowance > 0);
 }
