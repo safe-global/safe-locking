@@ -593,34 +593,34 @@ rule onlyOwnerOrPendingOwnerCanChangePendingOwner(method f) filtered {
 
 // Verify that it is always possible to, given an initial state with some
 // locked token amount, to fully withdraw the entire locked balance.
-rule alwaysPossibleToWithdraw(address sender, uint96 amount) {
+rule alwaysPossibleToWithdraw(address holder, uint96 amount) {
     env e;
     env eW; // env for withdraw
 
-    setupRequireSafeTokenInvariants(currentContract, sender);
+    setupRequireSafeTokenInvariants(currentContract, holder);
 
     require e.msg.value == 0;
     require eW.msg.value == 0;
     require e.msg.sender != 0;
-    require e.msg.sender == sender;
-    require eW.msg.sender == sender;
-    require sender != safeTokenContract;
+    require e.msg.sender == holder;
+    require eW.msg.sender == holder;
+    require holder != safeTokenContract;
 
     require to_mathint(e.block.timestamp) >= ghostLastTimestamp;
     require !safeTokenContract.paused();
 
-    requireInvariant unlockStartBeforeEnd(sender);
-    requireInvariant userUnlockedIsSumOfUnlockAmounts(sender);
-    requireInvariant unlocksAreOrderedByMaturityTimestamp(COOLDOWN_PERIOD(), sender);
+    requireInvariant unlockStartBeforeEnd(holder);
+    requireInvariant userUnlockedIsSumOfUnlockAmounts(holder);
+    requireInvariant unlocksAreOrderedByMaturityTimestamp(COOLDOWN_PERIOD(), holder);
     requireInvariant contractBalanceIsGreaterThanTotalLockedAndUnlockedAmounts();
-    requireInvariant totalLockedIsGreaterThanUserLocked(sender);
-    requireInvariant totalUnlockedIsGreaterThanUserUnlocked(sender);
+    requireInvariant totalLockedIsGreaterThanUserLocked(holder);
+    requireInvariant totalUnlockedIsGreaterThanUserUnlocked(holder);
 
-    ISafeTokenLock.User user = getUser(sender);
+    ISafeTokenLock.User user = getUser(holder);
     uint96 userLockedBefore = user.locked;
     require to_mathint(user.unlockEnd) < MAX_UINT(32);
 
-    mathint totalTokenBalanceBefore = getUserTokenBalance(sender);
+    mathint totalTokenBalanceBefore = getUserTokenBalance(holder);
 
     if (userLockedBefore > 0) {
         unlock@withrevert(e, userLockedBefore);
@@ -637,7 +637,6 @@ rule alwaysPossibleToWithdraw(address sender, uint96 amount) {
 // withdrawal.
 rule withdrawShouldAlwaysIncreaseReceiverTokenBalance() {
     env e;
-    mathint amount;
 
     setupRequireSafeTokenInvariants(currentContract, e.msg.sender);
 
@@ -655,7 +654,7 @@ rule withdrawShouldAlwaysIncreaseReceiverTokenBalance() {
 
     uint256 userBalanceBefore = safeTokenContract.balanceOf(e.msg.sender);
 
-    amount = withdraw@withrevert(e, 0);
+    uint96 amount = withdraw@withrevert(e, 0);
     assert !lastReverted;
 
     uint256 userBalanceAfter = safeTokenContract.balanceOf(e.msg.sender);
@@ -666,9 +665,6 @@ rule withdrawShouldAlwaysIncreaseReceiverTokenBalance() {
 // user's matured unlocks.
 rule withdrawReturnsValueBasedOnMaturedUnlock() {
     env e;
-    uint32 start;
-    uint32 end;
-    mathint withdrawAmount;
 
     setupRequireSafeTokenInvariants(currentContract, e.msg.sender);
 
@@ -679,8 +675,8 @@ rule withdrawReturnsValueBasedOnMaturedUnlock() {
 
     require !safeTokenContract.paused();
 
-    start = getUser(e.msg.sender).unlockStart;
-    end = getUser(e.msg.sender).unlockEnd;
+    uint32 start = getUser(e.msg.sender).unlockStart;
+    uint32 end = getUser(e.msg.sender).unlockEnd;
     ISafeTokenLock.UnlockInfo unlockInfo = getUnlock(e.msg.sender, start);
 
     requireInvariant unlockStartBeforeEnd(e.msg.sender);
@@ -691,7 +687,7 @@ rule withdrawReturnsValueBasedOnMaturedUnlock() {
     requireInvariant totalLockedIsGreaterThanUserLocked(e.msg.sender);
     requireInvariant totalUnlockedIsGreaterThanUserUnlocked(e.msg.sender);
 
-    withdrawAmount = withdraw@withrevert(e, 0);
+    mathint withdrawAmount = withdraw@withrevert(e, 0);
     assert !lastReverted;
 
     if(start == end || (to_mathint(unlockInfo.maturesAt) > to_mathint(e.block.timestamp))) {
@@ -724,9 +720,8 @@ rule canAlwaysWithdrawEverythingAfterMaturity() {
     ISafeTokenLock.User userBefore = getUser(e.msg.sender);
 
     uint32 lastUnlockIndex = harnessGetUserLastUnlockOperationIndex(e.msg.sender);
-    require to_mathint(e.block.timestamp) < MAX_UINT(64) - COOLDOWN_PERIOD();
-    require to_mathint(e.block.timestamp)
-        > getUnlock(e.msg.sender, lastUnlockIndex).maturesAt + COOLDOWN_PERIOD();
+    require e.block.timestamp + COOLDOWN_PERIOD() < MAX_UINT(64);
+    require to_mathint(e.block.timestamp) > to_mathint(getUnlock(e.msg.sender, lastUnlockIndex).maturesAt);
 
     uint96 amount = withdraw@withrevert(e, 0);
     assert !lastReverted;
