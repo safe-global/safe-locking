@@ -19,6 +19,7 @@ methods {
 
     // Harnessed functions
     function harnessGetUserUnlockSum(address) external returns(uint256) envfree;
+    function harnessGetUserLastUnlockOperationIndex(address) external returns(uint32) envfree;
 
     // SafeToken functions
     function safeTokenContract.allowance(address, address) external returns(uint256) envfree;
@@ -469,31 +470,6 @@ rule withdrawIsCommutative(uint32 maxUnlocks1, uint32 maxUnlocks2) {
     assert lastStorage == after1;
 }
 
-// Verify that it is always possible to, given an initial state with some
-// locked token amount, to fully withdraw the entire locked balance.
-// **Currently this is a "satisfy" rule which is very weak, and will change in
-// a future PR**.
-rule possibleToFullyWithdraw(address sender, uint96 amount) {
-    env eL; // env for lock
-    env eU; // env for unlock
-    env eW; // env for withdraw
-    uint256 balanceBefore = safeTokenContract.balanceOf(sender);
-    require eL.msg.sender == sender;
-    require eU.msg.sender == sender;
-    require eW.msg.sender == sender;
-
-    require amount > 0;
-    lock(eL, amount);
-
-    uint96 unlockAmount;
-    require unlockAmount <= amount;
-
-    unlock(eU, unlockAmount);
-
-    withdraw(eW, 0);
-    satisfy (balanceBefore == safeTokenContract.balanceOf(sender));
-}
-
 // Verify that the `getUser` function never reverts.
 rule getUserNeverReverts(address holder) {
     getUser@withrevert(holder);
@@ -613,6 +589,151 @@ rule onlyOwnerOrPendingOwnerCanChangePendingOwner(method f) filtered {
                 || f.selector == sig:transferOwnership(address).selector))
         || (e.msg.sender == pendingOwnerBefore
             && f.selector == sig:acceptOwnership().selector);
+}
+
+// Verify that it is always possible to, given an initial state with some
+// locked token amount, to fully withdraw the entire locked balance.
+rule alwaysPossibleToWithdraw(address holder, uint96 amount) {
+    env e;
+    env eW; // env for withdraw
+
+    setupRequireSafeTokenInvariants(currentContract, holder);
+
+    require e.msg.value == 0;
+    require eW.msg.value == 0;
+    require e.msg.sender != 0;
+    require e.msg.sender == holder;
+    require eW.msg.sender == holder;
+    require holder != safeTokenContract;
+
+    require to_mathint(e.block.timestamp) >= ghostLastTimestamp;
+    require !safeTokenContract.paused();
+
+    requireInvariant unlockStartBeforeEnd(holder);
+    requireInvariant userUnlockedIsSumOfUnlockAmounts(holder);
+    requireInvariant unlocksAreOrderedByMaturityTimestamp(COOLDOWN_PERIOD(), holder);
+    requireInvariant contractBalanceIsGreaterThanTotalLockedAndUnlockedAmounts();
+    requireInvariant totalLockedIsGreaterThanUserLocked(holder);
+    requireInvariant totalUnlockedIsGreaterThanUserUnlocked(holder);
+
+    ISafeTokenLock.User user = getUser(holder);
+    uint96 userLockedBefore = user.locked;
+    require to_mathint(user.unlockEnd) < MAX_UINT(32);
+
+    mathint totalTokenBalanceBefore = getUserTokenBalance(holder);
+
+    if (userLockedBefore > 0) {
+        unlock@withrevert(e, userLockedBefore);
+        assert !lastReverted;
+    }
+
+    require to_mathint(eW.block.timestamp) > e.block.timestamp + COOLDOWN_PERIOD();
+
+    mathint withdrawAmount = withdraw@withrevert(eW, 0);
+    assert !lastReverted && withdrawAmount == totalTokenBalanceBefore;
+}
+
+// Verity that the receiver's token balance always increases after a successful
+// withdrawal.
+rule withdrawShouldAlwaysIncreaseReceiverTokenBalance() {
+    env e;
+
+    setupRequireSafeTokenInvariants(currentContract, e.msg.sender);
+
+    require e.msg.value == 0;
+    require e.msg.sender != 0;
+    require e.msg.sender != safeTokenContract;
+    require e.msg.sender != currentContract;
+
+    require !safeTokenContract.paused();
+
+    requireInvariant userUnlockedIsSumOfUnlockAmounts(e.msg.sender);
+    requireInvariant contractBalanceIsGreaterThanTotalLockedAndUnlockedAmounts();
+    requireInvariant totalLockedIsGreaterThanUserLocked(e.msg.sender);
+    requireInvariant totalUnlockedIsGreaterThanUserUnlocked(e.msg.sender);
+
+    uint256 userBalanceBefore = safeTokenContract.balanceOf(e.msg.sender);
+
+    uint96 amount = withdraw@withrevert(e, 0);
+    assert !lastReverted;
+
+    uint256 userBalanceAfter = safeTokenContract.balanceOf(e.msg.sender);
+    assert to_mathint(userBalanceAfter) >= userBalanceBefore + amount;
+}
+
+// Verify that the `withdraw` function returns the correct amount based on the
+// user's matured unlocks.
+rule withdrawReturnsValueBasedOnMaturedUnlock() {
+    env e;
+
+    setupRequireSafeTokenInvariants(currentContract, e.msg.sender);
+
+    require e.msg.value == 0;
+    require e.msg.sender != 0;
+    require e.msg.sender != safeTokenContract;
+    require e.msg.sender != currentContract;
+
+    require !safeTokenContract.paused();
+
+    uint32 start = getUser(e.msg.sender).unlockStart;
+    uint32 end = getUser(e.msg.sender).unlockEnd;
+    ISafeTokenLock.UnlockInfo unlockInfo = getUnlock(e.msg.sender, start);
+
+    requireInvariant unlockStartBeforeEnd(e.msg.sender);
+    requireInvariant unlockAmountsAreNonZero(e.msg.sender);
+    requireInvariant userUnlockedIsSumOfUnlockAmounts(e.msg.sender);
+    requireInvariant contractBalanceIsGreaterThanTotalLockedAndUnlockedAmounts();
+    requireInvariant totalUnlockedIsGreaterThanUserUnlocked(e.msg.sender);
+    requireInvariant totalLockedIsGreaterThanUserLocked(e.msg.sender);
+    requireInvariant totalUnlockedIsGreaterThanUserUnlocked(e.msg.sender);
+
+    mathint withdrawAmount = withdraw@withrevert(e, 0);
+    assert !lastReverted;
+
+    if(start == end || (to_mathint(unlockInfo.maturesAt) > to_mathint(e.block.timestamp))) {
+        assert withdrawAmount == 0;
+    } else {
+        assert withdrawAmount > 0;
+    }
+}
+
+// Verify that the locked amount can always be withdrawn after maturity.
+rule canAlwaysWithdrawEverythingAfterMaturity() {
+    env e;
+
+    setupRequireSafeTokenInvariants(currentContract, e.msg.sender);
+
+    require e.msg.value == 0;
+
+    require !safeTokenContract.paused();
+
+    requireInvariant safeTokenCannotLock();
+    requireInvariant addressZeroCannotLock();
+    requireInvariant unlockStartBeforeEnd(e.msg.sender);
+    requireInvariant unlockAmountsAreNonZero(e.msg.sender);
+    requireInvariant userUnlockedIsSumOfUnlockAmounts(e.msg.sender);
+    requireInvariant totalLockedIsGreaterThanUserLocked(e.msg.sender);
+    requireInvariant totalUnlockedIsGreaterThanUserUnlocked(e.msg.sender);
+    requireInvariant contractBalanceIsGreaterThanTotalLockedAndUnlockedAmounts();
+    requireInvariant unlocksAreOrderedByMaturityTimestamp(COOLDOWN_PERIOD(), e.msg.sender);
+
+    ISafeTokenLock.User userBefore = getUser(e.msg.sender);
+
+    uint32 lastUnlockIndex = harnessGetUserLastUnlockOperationIndex(e.msg.sender);
+    require e.block.timestamp + COOLDOWN_PERIOD() <= MAX_UINT(64);
+    require to_mathint(e.block.timestamp) >= to_mathint(getUnlock(e.msg.sender, lastUnlockIndex).maturesAt);
+
+    uint96 amount = withdraw@withrevert(e, 0);
+    assert !lastReverted;
+
+    ISafeTokenLock.User userAfter = getUser(e.msg.sender);
+
+    assert amount != 0
+        => userBefore.unlockStart != userBefore.unlockEnd;
+    assert userBefore.unlocked == amount;
+    assert userAfter.unlocked == 0;
+    assert userAfter.unlockStart == userAfter.unlockEnd;
+    assert userAfter.unlockEnd == userBefore.unlockEnd;
 }
 
 // Verify that index received from `unlock` is always the last `unlockEnd`.
