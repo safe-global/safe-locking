@@ -90,7 +90,6 @@ interface ISafeTokenLock {
     /**
      * @notice Locks the specified amount of tokens.
      * @param amount The amount of tokens to lock. The function will revert with {InvalidTokenAmount} in case `amount` is zero.
-     * @dev Gas Usage (major): Token Transfer + SLOAD & SSTORE users[msg.sender] + Emit Event
      */
     function lock(uint96 amount) external;
 
@@ -99,7 +98,6 @@ interface ISafeTokenLock {
      * @param amount The amount of tokens to lock. The function will revert with custom error {InvalidTokenAmount} in case `amount` is zero.
      *               The function will revert with custom error {UnlockAmountExceeded} in case `amount` is greater than the locked amount.
      * @return index The index of the unlock operation.
-     * @dev Gas Usage (major): SLOAD & SSTORE users[msg.sender] + SSTORE UnlockInfo + Emit Event
      */
     function unlock(uint96 amount) external returns (uint32 index);
 
@@ -108,9 +106,6 @@ interface ISafeTokenLock {
      * @param maxUnlocks The maximum number of unlock operations to be withdrawn, or zero to process all unlocks.
      *                   Will not revert if `maxUnlocks` is greater than the number of matured unlocks, and will only withdraw the matured unlocks.
      * @return amount The amount of tokens withdrawn.
-     * @dev Gas Usage (major usage only): SLOAD users[caller] + n SLOAD unlocks[i][caller] + n Event Emits
-     * + n Zero assignment SSTORE unlocks[i][caller] + SSTORE users[caller] + Token Transfer
-     * where n can be as high as max(`unlockEnd - unlockStart`, `maxUnlocks`).
      */
     function withdraw(uint32 maxUnlocks) external returns (uint96 amount);
 
