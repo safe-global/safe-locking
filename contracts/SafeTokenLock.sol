@@ -57,6 +57,7 @@ contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
      * @dev This contract uses {uint96} values for token amount accounting, meaning that the token's {totalSupply} must not overflow a {uint96}.
      *      This is checked by the constructor, but can be circumvented by inflationary tokens where the {totalSupply} can increase, which should not be used with this contract.
      *      Luckily the Safe token's {totalSupply} both fits in a {uint96} and is constant, meaning it works with this locking contract.
+     *      It is expected that the passed `safeToken` parameter is a token that strictly follows the ERC-20 standard and reverts on failed transfers.
      */
     constructor(address initialOwner, address safeToken, uint32 cooldownPeriod) Ownable(initialOwner) {
         if (IERC20(safeToken).totalSupply() > type(uint96).max) revert InvalidSafeToken();
