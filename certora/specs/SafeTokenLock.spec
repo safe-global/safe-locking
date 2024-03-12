@@ -409,9 +409,6 @@ rule onlyOwnerOrPendingOwnerCanChangeOwner(method f) filtered {
 
     f@withrevert(e, args);
 
-    assert lastReverted
-        => (e.msg.sender == ownerBefore
-            && f.selector == sig:renounceOwnership().selector);
     assert owner() != ownerBefore
         => (e.msg.sender == pendingOwnerBefore
             && f.selector == sig:acceptOwnership().selector);

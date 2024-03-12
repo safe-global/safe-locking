@@ -201,8 +201,9 @@ contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
     /**
      * @notice Disables renouncing ownership.
      * @dev Allowing renouncing ownership would make the Token Rescue mechanism unusable.
+     *      `onlyOwner` modifier is removed as the function reverts on all cases.
      */
-    function renounceOwnership() public view override onlyOwner {
+    function renounceOwnership() public pure override {
         revert RenounceOwnershipDisabled();
     }
 }
