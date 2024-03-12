@@ -1167,5 +1167,13 @@ describe('SafeTokenLock', function () {
 
       expect(currentOwner).to.equal(owner)
     })
+
+    it('Should not allow renouncing ownership by non-owner', async function () {
+      const { safeTokenLock, alice } = await setupTests()
+
+      expect(safeTokenLock.connect(alice).renounceOwnership())
+        .to.be.revertedWithCustomError(safeTokenLock, 'OwnableUnauthorizedAccount')
+        .withArgs(alice)
+    })
   })
 })
