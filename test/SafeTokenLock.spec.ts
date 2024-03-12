@@ -1157,4 +1157,15 @@ describe('SafeTokenLock', function () {
       ])
     })
   })
+
+  describe('Ownership', function () {
+    it('Should not allow renouncing ownership', async function () {
+      const { safeTokenLock, owner } = await setupTests()
+
+      await safeTokenLock.connect(owner).renounceOwnership()
+      const currentOwner = await safeTokenLock.owner()
+
+      expect(currentOwner).to.equal(owner)
+    })
+  })
 })

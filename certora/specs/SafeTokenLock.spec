@@ -129,6 +129,16 @@ function setupRequireSafeTokenInvariants(address a, address b) {
             <= to_mathint(safeTokenContract.totalSupply());
 }
 
+// Invariant that proves that the Safe token locking contract's owner is never
+// the zero address.
+invariant safeTokenLockOwnerIsNeverZero()
+    owner() != 0
+{
+    preserved with (env e) {
+        require e.msg.sender != 0;
+    }
+}
+
 // Verify that Safe token contract's Safe token balance is always zero.
 invariant safeTokenSelfBalanceIsZero()
     safeTokenContract.balanceOf(safeTokenContract) == 0;
@@ -372,8 +382,8 @@ rule pendingOwnerCanAlwaysAcceptOwnership() {
     assert pendingOwner() == 0;
 }
 
-// Verify that an owner can always renounce ownership.
-rule ownerCanAlwaysRenounceOwnership() {
+// Verify that an owner can never renounce ownership.
+rule ownerCanNeverRenounceOwnership() {
     env e;
 
     require e.msg.sender == owner();
@@ -382,8 +392,7 @@ rule ownerCanAlwaysRenounceOwnership() {
     renounceOwnership@withrevert(e);
 
     assert !lastReverted;
-    assert owner() == 0;
-    assert pendingOwner() == 0;
+    assert owner() == e.msg.sender;
 }
 
 // Verify that only the `owner` (when renouncing ownership) and the
@@ -401,9 +410,7 @@ rule onlyOwnerOrPendingOwnerCanChangeOwner(method f) filtered {
     f(e, args);
 
     assert owner() != ownerBefore
-        => (e.msg.sender == ownerBefore
-            && f.selector == sig:renounceOwnership().selector)
-        || (e.msg.sender == pendingOwnerBefore
+        => (e.msg.sender == pendingOwnerBefore
             && f.selector == sig:acceptOwnership().selector);
 }
 
@@ -423,8 +430,7 @@ rule onlyOwnerOrPendingOwnerCanChangePendingOwner(method f) filtered {
 
     assert pendingOwner() != pendingOwnerBefore
         => (e.msg.sender == ownerBefore
-            && (f.selector == sig:renounceOwnership().selector
-                || f.selector == sig:transferOwnership(address).selector))
+            && f.selector == sig:transferOwnership(address).selector)
         || (e.msg.sender == pendingOwnerBefore
             && f.selector == sig:acceptOwnership().selector);
 }

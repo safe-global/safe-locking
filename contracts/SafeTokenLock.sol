@@ -190,4 +190,10 @@ contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
         if (token == SAFE_TOKEN) revert CannotRescueSafeToken();
         TokenRescuer._beforeTokenRescue(token, beneficiary, amount);
     }
+
+    /**
+     * @notice Disables renouncing ownership.
+     * @dev Allowing renouncing ownership would make the Token Rescue mechanism unusable.
+     */
+    function renounceOwnership() public view override onlyOwner {}
 }
