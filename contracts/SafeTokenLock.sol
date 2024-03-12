@@ -71,9 +71,11 @@ contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
      */
     function lock(uint96 amount) external {
         if (amount == 0) revert InvalidTokenAmount();
-        IERC20(SAFE_TOKEN).transferFrom(msg.sender, address(this), amount);
 
         _users[msg.sender].locked += amount;
+
+        IERC20(SAFE_TOKEN).transferFrom(msg.sender, address(this), amount);
+
         emit Locked(msg.sender, amount);
     }
 
