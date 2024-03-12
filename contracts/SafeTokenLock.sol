@@ -29,6 +29,11 @@ contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
     error CannotRescueSafeToken();
 
     /**
+     * @notice Error indicating an attempt to renounce ownership.
+     */
+    error RenounceOwnershipDisabled();
+
+    /**
      * @inheritdoc ISafeTokenLock
      */
     address public immutable SAFE_TOKEN;
@@ -197,5 +202,7 @@ contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
      * @notice Disables renouncing ownership.
      * @dev Allowing renouncing ownership would make the Token Rescue mechanism unusable.
      */
-    function renounceOwnership() public view override onlyOwner {}
+    function renounceOwnership() public view override onlyOwner {
+        revert RenounceOwnershipDisabled();
+    }
 }

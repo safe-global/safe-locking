@@ -391,7 +391,7 @@ rule ownerCanNeverRenounceOwnership() {
 
     renounceOwnership@withrevert(e);
 
-    assert !lastReverted;
+    assert lastReverted;
     assert owner() == e.msg.sender;
 }
 
@@ -407,8 +407,11 @@ rule onlyOwnerOrPendingOwnerCanChangeOwner(method f) filtered {
     address pendingOwnerBefore = pendingOwner();
     address ownerBefore = owner();
 
-    f(e, args);
+    f@withrevert(e, args);
 
+    assert lastReverted
+        => (e.msg.sender == ownerBefore
+            && f.selector == sig:renounceOwnership().selector);
     assert owner() != ownerBefore
         => (e.msg.sender == pendingOwnerBefore
             && f.selector == sig:acceptOwnership().selector);
@@ -426,7 +429,7 @@ rule onlyOwnerOrPendingOwnerCanChangePendingOwner(method f) filtered {
     address pendingOwnerBefore = pendingOwner();
     address ownerBefore = owner();
 
-    f(e, args);
+    f@withrevert(e, args);
 
     assert pendingOwner() != pendingOwnerBefore
         => (e.msg.sender == ownerBefore

@@ -1162,7 +1162,7 @@ describe('SafeTokenLock', function () {
     it('Should not allow renouncing ownership', async function () {
       const { safeTokenLock, owner } = await setupTests()
 
-      await safeTokenLock.connect(owner).renounceOwnership()
+      expect(safeTokenLock.connect(owner).renounceOwnership()).to.be.revertedWithCustomError(safeTokenLock, 'RenounceOwnershipDisabled')
       const currentOwner = await safeTokenLock.owner()
 
       expect(currentOwner).to.equal(owner)
