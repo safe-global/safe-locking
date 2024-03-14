@@ -29,6 +29,11 @@ contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
     error CannotRescueSafeToken();
 
     /**
+     * @notice Error indicating an attempt to renounce ownership.
+     */
+    error RenounceOwnershipDisabled();
+
+    /**
      * @inheritdoc ISafeTokenLock
      */
     address public immutable SAFE_TOKEN;
@@ -57,6 +62,7 @@ contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
      * @dev This contract uses {uint96} values for token amount accounting, meaning that the token's {totalSupply} must not overflow a {uint96}.
      *      This is checked by the constructor, but can be circumvented by inflationary tokens where the {totalSupply} can increase, which should not be used with this contract.
      *      Luckily the Safe token's {totalSupply} both fits in a {uint96} and is constant, meaning it works with this locking contract.
+     *      The specified `safeToken` must follow the ERC-20 standard and revert on failed transfers.
      */
     constructor(address initialOwner, address safeToken, uint32 cooldownPeriod) Ownable(initialOwner) {
         if (IERC20(safeToken).totalSupply() > type(uint96).max) revert InvalidSafeToken();
@@ -71,9 +77,11 @@ contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
      */
     function lock(uint96 amount) external {
         if (amount == 0) revert InvalidTokenAmount();
-        IERC20(SAFE_TOKEN).transferFrom(msg.sender, address(this), amount);
 
         _users[msg.sender].locked += amount;
+
+        IERC20(SAFE_TOKEN).transferFrom(msg.sender, address(this), amount);
+
         emit Locked(msg.sender, amount);
     }
 
@@ -189,5 +197,14 @@ contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
     function _beforeTokenRescue(address token, address beneficiary, uint256 amount) internal override {
         if (token == SAFE_TOKEN) revert CannotRescueSafeToken();
         TokenRescuer._beforeTokenRescue(token, beneficiary, amount);
+    }
+
+    /**
+     * @notice Disables renouncing ownership.
+     * @dev Allowing renouncing ownership would make the Token Rescue mechanism unusable.
+     *      `onlyOwner` modifier is removed as the function reverts on all cases.
+     */
+    function renounceOwnership() public pure override {
+        revert RenounceOwnershipDisabled();
     }
 }
