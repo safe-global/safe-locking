@@ -434,6 +434,25 @@ rule onlyOwnerOrPendingOwnerCanChangePendingOwner(method f) filtered {
             && f.selector == sig:acceptOwnership().selector);
 }
 
+// Verify that approve doesn't affect third party
+rule approveDoesNotAffectThirdParty(env e) {
+	address spender;
+	address owner = e.msg.sender;
+	address thirdParty;
+    address everyUser;
+    
+    require thirdParty != owner && thirdParty != spender;
+    
+    uint amount;
+	uint256 thirdPartyAllowanceBefore = safeTokenContract.allowance(thirdParty, everyUser);
+
+	safeTokenContract.approve(e, spender, amount);
+
+	uint256 thirdPartyAllowanceAfter = safeTokenContract.allowance(thirdParty, everyUser);
+
+    assert thirdPartyAllowanceBefore == thirdPartyAllowanceBefore;
+}
+
 // Verify that the user can always lock tokens. Notable exceptions are not
 // having enough allowance to locking contract, not having enough balance,
 // passed amount being zero and the Safe token contract being paused.
@@ -461,6 +480,24 @@ rule canAlwaysLock(uint96 amount) {
     } else {
         assert lastReverted;
     }
+}
+
+// Verify that lock Is Commutative
+rule lockIsCommutative(uint96 amount1, uint96 amount2) {
+    env e;
+    require amount1 + amount2 < max_uint96;
+    uint96 combinedAmounts = assert_uint96(amount1 + amount2);
+
+    storage init = lastStorage;
+
+    lock(e, amount1);
+    lock(e, amount2);
+
+    storage seperateCallStorage = lastStorage;
+
+    lock(e, combinedAmounts) at init;
+
+    assert lastStorage == seperateCallStorage;
 }
 
 // Verify that the user can always unlock tokens. If locked tokens are less than
@@ -575,6 +612,31 @@ rule unlockIndexShouldReturnLastEndIndex() {
 
     uint32 index = unlock@withrevert(e, _);
     assert !lastReverted => index == end;
+}
+
+// Verify that unlock Is Commutative (locked and unlocked wise).
+rule unlockIsCommutative(uint96 amount1, uint96 amount2) {
+    env e;
+    require amount1 + amount2 < max_uint96;
+    uint96 combinedAmounts = assert_uint96(amount1 + amount2);
+
+    storage init = lastStorage;
+
+    unlock(e, amount1);
+    unlock(e, amount2);
+
+    ISafeTokenLock.User userSeperate = getUser(e.msg.sender);
+    uint96 userLockedSeperate = userSeperate.locked;
+    uint96 userUnlockedSeperate = userSeperate.unlocked;
+
+    unlock(e, combinedAmounts) at init;
+
+    ISafeTokenLock.User userCombined = getUser(e.msg.sender);
+    uint96 userLockedCombined = userCombined.locked;
+    uint96 userUnlockedCombined = userCombined.unlocked;
+
+    assert userLockedSeperate == userLockedCombined;
+    assert userUnlockedSeperate == userUnlockedCombined;
 }
 
 // Verify that withdrawal cannot increase the balance of a user more than their
@@ -864,66 +926,4 @@ rule noFrontRunning(method f, method g) filtered {
         (lastStorage == after1 && !lastReverted) ||
         // If the second call is of `transferFrom()` there could be different cases of underflow, etc which could revert the call.
         (g.selector == sig:SafeTokenHarness.transferFrom(address,address,uint256).selector && beforeAllowance > 0);
-}
-
-// Verify that lock Is Commutative
-rule lockIsCommutative(uint96 amount1, uint96 amount2) {
-    env e;
-    require amount1 + amount2 < max_uint96;
-    uint96 combinedAmounts = assert_uint96(amount1 + amount2);
-
-    storage init = lastStorage;
-
-    lock(e, amount1);
-    lock(e, amount2);
-
-    storage seperateCallStorage = lastStorage;
-
-    lock(e, combinedAmounts) at init;
-
-    assert lastStorage == seperateCallStorage;
-}
-
-// Verify that unlock Is Commutative (locked and unlocked wise).
-rule unlockIsCommutative(uint96 amount1, uint96 amount2) {
-    env e;
-    require amount1 + amount2 < max_uint96;
-    uint96 combinedAmounts = assert_uint96(amount1 + amount2);
-
-    storage init = lastStorage;
-
-    unlock(e, amount1);
-    unlock(e, amount2);
-
-    ISafeTokenLock.User userSeperate = getUser(e.msg.sender);
-    uint96 userLockedSeperate = userSeperate.locked;
-    uint96 userUnlockedSeperate = userSeperate.unlocked;
-
-    unlock(e, combinedAmounts) at init;
-
-    ISafeTokenLock.User userCombined = getUser(e.msg.sender);
-    uint96 userLockedCombined = userCombined.locked;
-    uint96 userUnlockedCombined = userCombined.unlocked;
-
-    assert userLockedSeperate == userLockedCombined;
-    assert userUnlockedSeperate == userUnlockedCombined;
-}
-
-// Verify that approve doesn't affect third party
-rule approveDoesNotAffectThirdParty(env e) {
-	address spender;
-	address owner = e.msg.sender;
-	address thirdParty;
-    address everyUser; 
-    
-    require thirdParty != owner && thirdParty != spender;
-    
-    uint amount;
-	uint256 thirdPartyAllowanceBefore = safeTokenContract.allowance(thirdParty, everyUser);
-
-	safeTokenContract.approve(e, spender, amount);
-
-	uint256 thirdPartyAllowanceAfter = safeTokenContract.allowance(thirdParty, everyUser);
-
-    assert thirdPartyAllowanceBefore == thirdPartyAllowanceBefore;
 }
