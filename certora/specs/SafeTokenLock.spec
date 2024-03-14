@@ -435,15 +435,12 @@ rule onlyOwnerOrPendingOwnerCanChangePendingOwner(method f) filtered {
 }
 
 // Verify that approve doesn't affect third party
-rule approveDoesNotAffectThirdParty(env e) {
-	address spender;
+rule approveDoesNotAffectThirdParty(uint amount, address spender, address thirdParty, address everyUser) {
+    env e;
 	address owner = e.msg.sender;
-	address thirdParty;
-    address everyUser;
     
     require thirdParty != owner && thirdParty != spender;
     
-    uint amount;
 	uint256 thirdPartyAllowanceBefore = safeTokenContract.allowance(thirdParty, everyUser);
 
 	safeTokenContract.approve(e, spender, amount);
