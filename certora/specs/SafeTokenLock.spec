@@ -526,14 +526,10 @@ rule canAlwaysUnlock(uint96 amount) {
 
     ISafeTokenLock.User userBefore = getUser(e.msg.sender);
 
-    // Exception 1: if the user has already done `type(uint256).max` previous
+    // Exception: If the user has already done `type(uint256).max` previous
     // unlocks. This causes the new `unlockEnd` to overflow and therefore the
     // `unlock` call to always revert.
     require userBefore.unlockEnd + 1 <= MAX_UINT(32);
-
-    // Exception 2: the timestamp is far enough in the future such that, when
-    // added to the cooldown period, it would overflow a `uint64`. This is
-    // billions of years away, so not a realistic limitation.
 
     unlock@withrevert(e, amount);
 
