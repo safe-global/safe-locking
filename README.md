@@ -92,10 +92,10 @@ sequenceDiagram
 	deactivate L
 ```
 
-<!--
-### Audits
-- [](./docs/)
--->
+## Audits
+
+- [Ackee Audit Report](./docs/audits/ackee-blockchain-safe-token-locking-report-1.1.pdf)
+- [Certora Audit Report](./docs/audits/Safe%20-%20Certora%20security%20report.pdf)
 
 ## Usage
 
