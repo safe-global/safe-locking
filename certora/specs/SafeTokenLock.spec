@@ -1,7 +1,5 @@
 using SafeTokenHarness as safeTokenContract;
 
-definition MAX_UINT(mathint bitwidth) returns mathint = 2^bitwidth - 1;
-
 methods {
     // SafeTokenLock functions
     function COOLDOWN_PERIOD() external returns (uint64) envfree;
@@ -99,7 +97,7 @@ hook Sstore _unlocks[KEY uint32 index][KEY address holder].amount uint96 value S
 // Ghost variable that tracks the last timestamp.
 ghost mathint ghostLastTimestamp;
 hook TIMESTAMP uint256 time {
-    require to_mathint(time) < MAX_UINT(64) - COOLDOWN_PERIOD();
+    require to_mathint(time) < max_uint64 - COOLDOWN_PERIOD();
     require to_mathint(time) >= ghostLastTimestamp;
     ghostLastTimestamp = time;
 }
@@ -325,7 +323,7 @@ rule getUserNeverReverts(address holder) {
 
 // Verify that the `getUserTokenBalance` function never reverts.
 rule getUserTokenBalanceNeverReverts(address holder) {
-    require getUser(holder).locked + getUser(holder).unlocked <= MAX_UINT(96);
+    require getUser(holder).locked + getUser(holder).unlocked <= max_uint96;
     getUserTokenBalance@withrevert(holder);
     assert !lastReverted;
 }
@@ -529,7 +527,7 @@ rule canAlwaysUnlock(uint96 amount) {
     // Exception: If the user has already done `type(uint256).max` previous
     // unlocks. This causes the new `unlockEnd` to overflow and therefore the
     // `unlock` call to always revert.
-    require userBefore.unlockEnd + 1 <= MAX_UINT(32);
+    require userBefore.unlockEnd + 1 <= max_uint32;
 
     unlock@withrevert(e, amount);
 
@@ -586,7 +584,7 @@ rule cannotUnlockPastMaxUint32(method f, address holder) filtered {
     requireInvariant userUnlockedIsSumOfUnlockAmounts(holder);
 
     ISafeTokenLock.User userBefore = getUser(holder);
-    require to_mathint(userBefore.unlockEnd) == MAX_UINT(32);
+    require to_mathint(userBefore.unlockEnd) == max_uint32;
 
     f(e, args);
 
@@ -734,7 +732,7 @@ rule alwaysPossibleToWithdraw(address holder, uint96 amount) {
 
     ISafeTokenLock.User user = getUser(holder);
     uint96 userLockedBefore = user.locked;
-    require to_mathint(user.unlockEnd) < MAX_UINT(32);
+    require to_mathint(user.unlockEnd) < max_uint32;
 
     mathint totalTokenBalanceBefore = getUserTokenBalance(holder);
 
