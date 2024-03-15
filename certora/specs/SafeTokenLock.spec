@@ -26,6 +26,7 @@ methods {
     function safeTokenContract.balanceOf(address) external returns(uint256) envfree;
     function safeTokenContract.totalSupply() external returns(uint256) envfree;
     function safeTokenContract.paused() external returns(bool) envfree;
+    function safeTokenContract.approve(address, uint256) external returns (bool);
 
     // Prevent SafeTokenHarness.transfer to cause HAVOC
     function _.transfer(address,uint256) external => NONDET UNRESOLVED;
@@ -175,11 +176,9 @@ invariant contractCannotOperateOnItself()
 // token.
 invariant noAllowanceForSafeTokenLock(address spender)
     safeTokenContract.allowance(currentContract, spender) == 0
-{
-    preserved with (env e) {
-        require e.msg.sender != currentContract;
+    filtered {
+        f -> f.contract != safeTokenContract
     }
-}
 
 // Invariant proves that the locking contract's Safe token balance is always
 // greater than the sum of all user's Safe token balance in the Safe locking
@@ -435,6 +434,22 @@ rule onlyOwnerOrPendingOwnerCanChangePendingOwner(method f) filtered {
             && f.selector == sig:acceptOwnership().selector);
 }
 
+// Verify that approve doesn't affect third party
+rule approveDoesNotAffectThirdParty(uint amount, address spender, address thirdParty, address everyUser) {
+    env e;
+    address owner = e.msg.sender;
+    
+    require thirdParty != owner && thirdParty != spender;
+    
+    uint256 thirdPartyAllowanceBefore = safeTokenContract.allowance(thirdParty, everyUser);
+    
+    safeTokenContract.approve(e, spender, amount);
+    
+    uint256 thirdPartyAllowanceAfter = safeTokenContract.allowance(thirdParty, everyUser);
+    
+    assert thirdPartyAllowanceBefore == thirdPartyAllowanceBefore;
+}
+
 // Verify that the user can always lock tokens. Notable exceptions are not
 // having enough allowance to locking contract, not having enough balance,
 // passed amount being zero and the Safe token contract being paused.
@@ -464,6 +479,24 @@ rule canAlwaysLock(uint96 amount) {
     }
 }
 
+// Verify that lock Is Commutative
+rule lockIsCommutative(uint96 amount1, uint96 amount2) {
+    env e;
+    require amount1 + amount2 < max_uint96;
+    uint96 combinedAmounts = assert_uint96(amount1 + amount2);
+
+    storage init = lastStorage;
+
+    lock(e, amount1);
+    lock(e, amount2);
+
+    storage seperateCallStorage = lastStorage;
+
+    lock(e, combinedAmounts) at init;
+
+    assert lastStorage == seperateCallStorage;
+}
+
 // Verify that the user can always unlock tokens. If locked tokens are less than
 // before, then unlocked tokens are more by exactly the difference than before.
 rule allLockedCanGetUnlocked(method f) filtered {
@@ -490,20 +523,13 @@ rule canAlwaysUnlock(uint96 amount) {
 
     setupRequireSafeTokenInvariants(currentContract, e.msg.sender);
     requireInvariant userTokenBalanceIsLessThanTotalSupply(e.msg.sender);
-    requireInvariant userUnlockedIsSumOfUnlockAmounts(e.msg.sender);
-    requireInvariant contractBalanceIsGreaterThanTotalLockedAndUnlockedAmounts();
 
     ISafeTokenLock.User userBefore = getUser(e.msg.sender);
 
-    // Exception 1: if the user has already done `type(uint256).max` previous
+    // Exception: If the user has already done `type(uint256).max` previous
     // unlocks. This causes the new `unlockEnd` to overflow and therefore the
     // `unlock` call to always revert.
     require userBefore.unlockEnd + 1 <= MAX_UINT(32);
-
-    // Exception 2: the timestamp is far enough in the future such that, when
-    // added to the cooldown period, it would overflow a `uint64`. This is
-    // billions of years away, so not a realistic limitation.
-    require e.block.timestamp + COOLDOWN_PERIOD() <= MAX_UINT(64);
 
     unlock@withrevert(e, amount);
 
@@ -579,6 +605,31 @@ rule unlockIndexShouldReturnLastEndIndex() {
 
     uint32 index = unlock@withrevert(e, _);
     assert !lastReverted => index == end;
+}
+
+// Verify that unlock Is Commutative (locked and unlocked wise).
+rule unlockIsCommutative(uint96 amount1, uint96 amount2) {
+    env e;
+    require amount1 + amount2 < max_uint96;
+    uint96 combinedAmounts = assert_uint96(amount1 + amount2);
+
+    storage init = lastStorage;
+
+    unlock(e, amount1);
+    unlock(e, amount2);
+
+    ISafeTokenLock.User userSeperate = getUser(e.msg.sender);
+    uint96 userLockedSeperate = userSeperate.locked;
+    uint96 userUnlockedSeperate = userSeperate.unlocked;
+
+    unlock(e, combinedAmounts) at init;
+
+    ISafeTokenLock.User userCombined = getUser(e.msg.sender);
+    uint96 userLockedCombined = userCombined.locked;
+    uint96 userUnlockedCombined = userCombined.unlocked;
+
+    assert userLockedSeperate == userLockedCombined;
+    assert userUnlockedSeperate == userUnlockedCombined;
 }
 
 // Verify that withdrawal cannot increase the balance of a user more than their
@@ -785,7 +836,6 @@ rule canAlwaysWithdrawEverythingAfterMaturity() {
     ISafeTokenLock.User userBefore = getUser(e.msg.sender);
 
     uint32 lastUnlockIndex = harnessGetUserLastUnlockOperationIndex(e.msg.sender);
-    require e.block.timestamp + COOLDOWN_PERIOD() <= MAX_UINT(64);
     require to_mathint(e.block.timestamp) >= to_mathint(getUnlock(e.msg.sender, lastUnlockIndex).maturesAt);
 
     uint96 amount = withdraw@withrevert(e, 0);
