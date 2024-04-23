@@ -4,6 +4,10 @@
 
 Safe locking contract facilitates locking Safe tokens. Users can lock and unlock tokens anytime and also withdraw after the `COOLDOWN_PERIOD` is over. The contract also provides feature controlled by the admin address to recover ERC20 tokens other than Safe tokens.
 
+## Mainnet Deployment
+
+Safe Locking Contract Address: [0x0a7CB434f96f65972D46A5c1A64a9654dC9959b2](https://etherscan.io/address/0x0a7CB434f96f65972D46A5c1A64a9654dC9959b2)
+
 ## Contract
 
 ### Contract behaviour

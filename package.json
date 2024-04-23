@@ -1,6 +1,6 @@
 {
   "name": "@safe-global/safe-locking",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Safe Token Locking Contract",
   "main": "index.js",
   "scripts": {
