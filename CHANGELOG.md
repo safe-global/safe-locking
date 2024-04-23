@@ -24,8 +24,6 @@ Same as before.
    Type: `uint32`
    Value: `86400`
 
-Deployment Parameters can also be found in [deployments.ts](./src/utils/deployment.ts)
-
 ## Changes
 
 ### General

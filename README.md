@@ -6,7 +6,7 @@ Safe locking contract facilitates locking Safe tokens. Users can lock and unlock
 
 ## Mainnet Deployment
 
-Safe Locking Contract Address: [0x0a7CB434f96f65972D46A5c1A64a9654dC9959b2](https://etherscan.io/address/0x0a7CB434f96f65972D46A5c1A64a9654dC9959b2)
+The Safe locking contract was deployed to Ethereum mainnet at address [`0x0a7CB434f96f65972D46A5c1A64a9654dC9959b2`](https://etherscan.io/address/0x0a7CB434f96f65972D46A5c1A64a9654dC9959b2). The deployment transaction was [`0xd90bbe97f71ca9cff6e7ee545a773d25fa34260624df681bf04592f5e7301b2e`](https://etherscan.io/tx/0xd90bbe97f71ca9cff6e7ee545a773d25fa34260624df681bf04592f5e7301b2e)
 
 ## Contract
 
