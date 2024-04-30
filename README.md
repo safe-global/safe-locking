@@ -29,10 +29,10 @@ The Safe locking contract was deployed to Ethereum mainnet at address [`0x0a7CB4
 - `withdraw(...)` is defined to withdraw all matured unlocks (unlocks whose unlock time is greater than `block.timestamp`). This is an `O(n)` operation (where `n` is the number of matured unlocks). In order to support more deterministic gas usage, a `withdraw(maxUnlocks)` function is also provided to withdraw up to `maxUnlocks` of the oldest matured unlocks. For example, `withdraw(1)` can be used to withdraw only the oldest unlock if it is already matured, which is an `O(1)` operation.
 - `getUserTokenBalance` returns the total `SAFE` token balance belonging to the `holder` within the locking contract, this includes locked tokens, unlocked tokens, and ready to withdraw tokens.
 - Full accounting of locked tokens per user can be computable based on emitted events.
-- The total `$SAFE` token balance in the locking contract belonging to any user can be readable on-chain or via a standard `eth_call` JSON RPC request. This MUST be made available by the `getUserTokenBalance(...)` contract method.
+- The total `SAFE` token balance in the locking contract belonging to any user can be readable on-chain or via a standard `eth_call` JSON RPC request. This MUST be made available by the `getUserTokenBalance(...)` contract method.
 - The locking contract can allow simultaneous token unlock requests with separate cooldown ending timestamps based on an immutable cooldown period.
 - The contract cannot allow the total sum of unlock request amounts to exceed the token holder’s `SAFE` balance in the contract.
-- A withdrawal will withdraw the complete amount of its corresponding unlock request. That is, if a user calls `unlock(amount)`, then `withdraw()`, that unlock once matured, should transfer exactly `amount` `$SAFE` tokens to the holder (assuming no other unlocks were matured apart from that particular unlock operation).
+- A withdrawal will withdraw the complete amount of its corresponding unlock request. That is, if a user calls `unlock(amount)`, then `withdraw()`, that unlock once matured, should transfer exactly `amount` `SAFE` tokens to the holder (assuming no other unlocks were matured apart from that particular unlock operation).
 
 #### Possible states for Tokens
 
