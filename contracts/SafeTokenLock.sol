@@ -58,7 +58,7 @@ contract SafeTokenLock is ISafeTokenLock, TokenRescuer {
      * @notice Creates a new instance of the Safe token locking contract.
      * @param initialOwner Initial owner of the contract.
      * @param safeToken Address of the Safe token. Passing it a token whose {totalSupply} is greater than `type(uint96).max` will revert with {InvalidSafeToken}.
-     * @param cooldownPeriod The minimum period in seconds after which Safe token withdrawal can be performed. Passing zero will revert with {InvalidTokenAmount}.
+     * @param cooldownPeriod The minimum period in seconds after which Safe token withdrawal can be performed. Passing zero will revert with {InvalidCooldownAmount}.
      * @dev This contract uses {uint96} values for token amount accounting, meaning that the token's {totalSupply} must not overflow a {uint96}.
      *      This is checked by the constructor, but can be circumvented by inflationary tokens where the {totalSupply} can increase, which should not be used with this contract.
      *      Luckily the Safe token's {totalSupply} both fits in a {uint96} and is constant, meaning it works with this locking contract.
